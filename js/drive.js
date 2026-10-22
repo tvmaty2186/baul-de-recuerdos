@@ -90,13 +90,35 @@ export async function archivosDelChat(claveChat) {
   let pagina = '';
   do {
     const url = `${API}/files?q=${encodeURIComponent(q)}&pageSize=1000` +
-      `&fields=nextPageToken,files(id,name,appProperties,webViewLink)` +
+      `&fields=nextPageToken,files(id,name,parents,appProperties,webViewLink)` +
       (pagina ? `&pageToken=${pagina}` : '');
     const datos = await (await pedir(url)).json();
     lista.push(...datos.files);
     pagina = datos.nextPageToken || '';
   } while (pagina);
   return lista;
+}
+
+export async function carpetasDentroDe(padre) {
+  const q = `mimeType='${CARPETA}' and '${padre}' in parents and trashed=false`;
+  const r = await pedir(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=1000`);
+  return (await r.json()).files;
+}
+
+export async function renombrar(id, nombre) {
+  await pedir(`${API}/files/${id}?fields=id`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nombre }),
+  });
+}
+
+export async function mover(id, desde, hacia) {
+  await pedir(`${API}/files/${id}?addParents=${hacia}&removeParents=${desde}&fields=id`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
 }
 
 export async function subirArchivo({ nombre, padre, mime, contenido, propiedades }) {
