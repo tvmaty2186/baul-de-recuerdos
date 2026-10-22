@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baúl de recuerdos</title>
+  <meta name="description" content="Guardá chats de WhatsApp en tu Google Drive, ordenados y sin encriptar.">
+  <meta name="theme-color" content="#5b4636">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="iconos/icono.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="iconos/icono-192.png">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="cabecera">
+    <img src="iconos/icono.svg" alt="" width="40" height="40">
+    <div>
+      <h1>Baúl de recuerdos</h1>
+      <p>Guardá tus chats de WhatsApp en tu Google Drive, ordenados y para siempre.</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Paso 1 -->
+    <section id="paso-elegir" class="tarjeta">
+      <h2><span class="numero">1</span> Elegí el chat exportado</h2>
+      <details class="ayuda">
+        <summary>¿Cómo exporto un chat de WhatsApp?</summary>
+        <ol>
+          <li>Abrí el chat en WhatsApp.</li>
+          <li><strong>Android:</strong> tocá <em>⋮ → Más → Exportar chat</em>.<br>
+              <strong>iPhone:</strong> tocá el nombre del contacto arriba → <em>Exportar chat</em>.</li>
+          <li>Elegí <strong>Incluir archivos</strong> para guardar audios y fotos.</li>
+          <li><strong>Android:</strong> si instalaste esta app, elegila en la lista para compartir.<br>
+              Si no, guardá el archivo en el teléfono (o en "Archivos" en iPhone) y elegilo acá abajo.</li>
+        </ol>
+      </details>
+      <label class="zona-archivo" id="zona-archivo">
+        <input type="file" id="entrada-archivo" multiple accept=".zip,.txt,application/zip,text/plain,audio/*,image/*,video/*,*/*">
+        <span class="zona-titulo">Tocá para elegir el archivo .zip</span>
+        <span class="zona-sub">o arrastralo acá (también podés elegir el .txt junto con sus fotos y audios)</span>
+      </label>
+      <p id="estado-carga" class="estado" hidden></p>
+    </section>
+
+    <!-- Paso 2 -->
+    <section id="paso-opciones" class="tarjeta" hidden>
+      <h2><span class="numero">2</span> Elegí qué guardar</h2>
+
+      <div class="campo">
+        <label for="nombre-chat">Nombre del chat</label>
+        <input id="nombre-chat" type="text" autocomplete="off">
+        <small>Se guarda en la carpeta <strong id="vista-carpeta"></strong></small>
+      </div>
+
+      <div class="campo">
+        <label for="quien-soy">¿Cuál de estos sos vos?</label>
+        <select id="quien-soy"></select>
+        <small>Sirve para separar lo que enviaste de lo que recibiste.</small>
+      </div>
+
+      <fieldset class="campo">
+        <legend>Fechas</legend>
+        <div class="fila">
+          <label>Desde <input id="desde" type="date"></label>
+          <label>Hasta <input id="hasta" type="date"></label>
+        </div>
+        <small id="rango-chat"></small>
+      </fieldset>
+
+      <fieldset class="campo">
+        <legend>Qué guardar</legend>
+        <label class="opcion"><input type="checkbox" id="guardar-conversacion" checked> <span>Conversación escrita <small id="cuenta-mensajes"></small></span></label>
+        <div id="lista-tipos"></div>
+        <label class="opcion" id="opcion-sin-mensaje" hidden><input type="checkbox" id="incluir-sin-mensaje"> <span>Archivos sin mensaje asociado <small id="cuenta-sin-mensaje"></small></span></label>
+      </fieldset>
+
+      <fieldset class="campo">
+        <legend>De quién</legend>
+        <div class="fila">
+          <label class="opcion"><input type="checkbox" id="incluir-enviados" checked> <span>Enviados por mí</span></label>
+          <label class="opcion"><input type="checkbox" id="incluir-recibidos" checked> <span>Recibidos</span></label>
+        </div>
+      </fieldset>
+
+      <p id="aviso-omitidos" class="aviso" hidden></p>
+      <p id="resumen" class="resumen"></p>
+    </section>
+
+    <!-- Paso 3 -->
+    <section id="paso-guardar" class="tarjeta" hidden>
+      <h2><span class="numero">3</span> Guardar en tu Drive</h2>
+      <p class="nota">La app solo puede ver y modificar las carpetas que ella misma crea en tu Drive. No guarda nada en ningún otro lado.</p>
+      <button id="boton-guardar" class="boton">Conectar con Google y guardar</button>
+      <div id="progreso" hidden>
+        <p id="etapa" class="estado"></p>
+        <progress id="barra" max="1" value="0"></progress>
+      </div>
+      <div id="final" class="final" hidden></div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <a href="privacidad.html">Privacidad</a> · Los archivos se procesan en tu teléfono y van directo a tu Drive.
+  </footer>
+</body>
+</html>
