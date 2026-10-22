@@ -1,124 +1,142 @@
 import { GOOGLE_CLIENT_ID } from './config.js';
-import { parsearChat, nombreDesdeArchivo, fechaISO } from './parser.js';
+import { fechaISO } from './parser.js';
 import { TIPOS, armarPlan, resumenAdjuntos } from './plan.js';
-import { guardarEnDrive, CARPETA_RAIZ } from './guardar.js';
+import { guardarEnDrive } from './guardar.js';
+import { leerExportacion, formatoBytes } from './lector.js';
+import { listarChats, abrirChat, cerrarChat } from './visor.js';
 import * as drive from './drive.js';
 import { tomarCompartidos } from './compartidos.js';
 import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
+const escapar = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const numero = (n) => n.toLocaleString('es');
 
 const estado = {
   fuentes: new Map(), // nombre -> { tamanio, leer() }
   chat: null, // { mensajes, participantes }
-  resumen: null,
+  yo: '',
+  elegidos: new Set(), // 'conversacion', 'audio', 'foto', … , 'otros'
+  quien: 'todos',
+  plan: [],
+  mensajesElegidos: null,
+  conversacionGuardada: null,
 };
 
-const formatoBytes = (b) =>
-  b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
+// ---------- Navegación ----------
 
-const nombreBase = (ruta) => ruta.split('/').pop();
+let pantallaActual = 'inicio';
 
-function mostrarCarga(texto, error = false) {
-  const p = $('estado-carga');
-  p.hidden = !texto;
-  p.textContent = texto || '';
-  p.classList.toggle('error', error);
+function mostrar(nombre, { historial = 'push' } = {}) {
+  for (const p of document.querySelectorAll('.pantalla')) p.hidden = p.dataset.pantalla !== nombre;
+  if (pantallaActual === 'visor' && nombre !== 'visor') cerrarChat();
+  pantallaActual = nombre;
+  window.scrollTo(0, 0);
+  if (historial === 'push') history.pushState({ pantalla: nombre }, '');
+  if (historial === 'reemplazar') history.replaceState({ pantalla: nombre }, '');
 }
 
-// ---------- Paso 1: leer lo exportado ----------
+window.addEventListener('popstate', (e) => {
+  // Mientras se guarda no se puede volver atrás.
+  if (pantallaActual === 'guardando') return history.pushState({ pantalla: 'guardando' }, '');
+  const destino = e.state?.pantalla || 'inicio';
+  mostrar(destino === 'guardando' ? 'opciones' : destino, { historial: 'nada' });
+  if (destino === 'guardados') cargarGuardados();
+});
 
-// Android a veces entrega los archivos sin extensión (por ejemplo desde "Descargas"),
-// así que el zip se reconoce por su contenido: empieza con "PK".
-async function esZip(archivo) {
-  if (/\.zip$/i.test(archivo.name) || /zip/i.test(archivo.type)) return true;
-  const inicio = new Uint8Array(await archivo.slice(0, 4).arrayBuffer());
-  return inicio[0] === 0x50 && inicio[1] === 0x4b && inicio[2] === 0x03 && inicio[3] === 0x04;
+for (const boton of document.querySelectorAll('[data-volver]')) {
+  boton.addEventListener('click', () => {
+    const destino = boton.dataset.volver;
+    mostrar(destino, { historial: 'reemplazar' });
+    if (destino === 'guardados') cargarGuardados();
+  });
 }
 
-// Un archivo suelto puede ser el chat aunque no termine en .txt.
-const puedeSerChat = (nombre, tipo = '', tamanio = 0) =>
-  /\.txt$/i.test(nombre) || (!/\.[a-z0-9]{2,5}$/i.test(nombre) && (!tipo || /^text\//.test(tipo)) && tamanio < 50e6);
+// ---------- Google ----------
+
+let googleListo = null;
+
+// Tiene que llamarse desde un toque del usuario: puede abrir la ventana de Google.
+async function asegurarGoogle() {
+  if (!GOOGLE_CLIENT_ID) throw new Error('Falta configurar Google en js/config.js.');
+  await googleListo;
+  if (!drive.conectado()) await drive.conectar();
+}
+
+// ---------- Inicio: abrir el chat exportado ----------
+
+function errorInicio(error) {
+  $('cargando').hidden = true;
+  $('error-carga').hidden = !error;
+  if (!error) return;
+  $('error-texto').textContent = error.message;
+  $('error-detalle').textContent = `v${VERSION}. ${error.detalle || ''}`;
+  $('error-carga').querySelector('details').hidden = !error.detalle;
+}
 
 async function cargarArchivos(lista) {
   if (!lista.length) return;
-  mostrarCarga('Leyendo el chat…');
-  estado.fuentes = new Map();
-  const textos = [];
-  let nombreZip = null;
-  const diagnostico = [];
-
+  errorInicio(null);
+  $('cargando').hidden = false;
   try {
-    for (const archivo of lista) {
-      if (await esZip(archivo)) {
-        nombreZip ??= archivo.name;
-        const zip = await JSZip.loadAsync(archivo);
-        diagnostico.push(`zip con ${Object.keys(zip.files).length} archivos`);
-        zip.forEach((ruta, entrada) => {
-          if (entrada.dir || nombreBase(ruta).startsWith('.') || ruta.startsWith('__MACOSX')) return;
-          const nombre = nombreBase(ruta);
-          const tamanio = entrada._data?.uncompressedSize ?? 0;
-          estado.fuentes.set(nombre, { tamanio, leer: () => entrada.async('arraybuffer') });
-          if (puedeSerChat(nombre, '', tamanio)) textos.push({ nombre, leer: () => entrada.async('string') });
-        });
-      } else {
-        estado.fuentes.set(archivo.name, { tamanio: archivo.size, leer: () => archivo.arrayBuffer() });
-        if (puedeSerChat(archivo.name, archivo.type, archivo.size)) {
-          textos.push({ nombre: archivo.name, leer: () => archivo.text() });
-        }
-      }
-    }
+    const { fuentes, chat, nombreChat } = await leerExportacion(lista);
+    estado.fuentes = fuentes;
+    estado.chat = chat;
+    $('cargando').hidden = true;
+    prepararOpciones(nombreChat);
+    mostrar('opciones');
   } catch (e) {
-    mostrarCarga(`No pude abrir el archivo: ${e.message}`, true);
-    return;
+    errorInicio(e);
+  } finally {
+    $('entrada-archivo').value = '';
   }
-
-  // El chat es el .txt con más mensajes (puede haber .txt adjuntos dentro del chat).
-  let mejor = null;
-  for (const t of textos) {
-    try {
-      const contenido = await t.leer();
-      const chat = parsearChat(contenido);
-      diagnostico.push(`"${t.nombre}": ${chat.mensajes.length} mensajes, empieza con «${contenido.slice(0, 60)}»`);
-      if (!mejor || chat.mensajes.length > mejor.chat.mensajes.length) mejor = { ...t, chat };
-    } catch (e) {
-      diagnostico.push(`"${t.nombre}": error ${e.message}`);
-    }
-  }
-  if (!mejor || !mejor.chat.mensajes.length) {
-    const recibidos = lista.map((a) => `${a.name || 'sin nombre'} (${a.type || 'sin tipo'}, ${formatoBytes(a.size)})`);
-    if (!textos.length) diagnostico.push('ningún archivo de texto');
-    mostrarCarga(
-      'No encontré la conversación. Elegí el .zip que genera "Exportar chat" de WhatsApp (o el .txt). ' +
-        `[v${VERSION}] Recibí: ${recibidos.join(', ')}. Detalle: ${diagnostico.join('; ')}.`,
-      true,
-    );
-    return;
-  }
-  estado.fuentes.delete(mejor.nombre);
-  estado.chat = mejor.chat;
-
-  const { participantes } = mejor.chat;
-  const nombre =
-    nombreDesdeArchivo(mejor.nombre) || (nombreZip && nombreDesdeArchivo(nombreZip)) || participantes[0] || 'Sin nombre';
-  mostrarCarga(`Listo: ${mejor.chat.mensajes.length.toLocaleString('es')} mensajes y ${estado.fuentes.size} archivos.`);
-  prepararOpciones(nombre);
 }
 
-// ---------- Paso 2: opciones ----------
+// ---------- Qué guardar ----------
+
+const ICONOS = { conversacion: 'charla', audio: 'audio', foto: 'foto', video: 'video', documento: 'documento', sticker: 'sticker', otros: 'otros' };
+const NOMBRES = { conversacion: 'Conversación', ...Object.fromEntries(Object.entries(TIPOS).map(([t, i]) => [t, i.etiqueta])), otros: 'Sin mensaje' };
+
+function recordarYo(nombre) {
+  try {
+    localStorage.setItem('baul-yo', nombre);
+  } catch {}
+}
+
+function yoRecordado() {
+  try {
+    return localStorage.getItem('baul-yo') || '';
+  } catch {
+    return '';
+  }
+}
 
 function prepararOpciones(nombreChat) {
   const { mensajes, participantes } = estado.chat;
   $('nombre-chat').value = nombreChat;
 
-  // Si el chat se llama como uno de los dos participantes, "yo" es el otro.
-  const select = $('quien-soy');
-  select.innerHTML = '';
-  let yo = participantes.length === 2 && participantes.includes(nombreChat)
-    ? participantes.find((p) => p !== nombreChat)
-    : null;
-  if (!yo) select.append(new Option('Elegí tu nombre…', ''));
-  for (const p of participantes) select.append(new Option(p, p, false, p === yo));
+  // Quién es "yo": el nombre que eligió la última vez, o el otro participante si el chat
+  // se llama como uno de los dos.
+  const recordado = yoRecordado();
+  estado.yo = participantes.includes(recordado)
+    ? recordado
+    : participantes.length === 2 && participantes.includes(nombreChat)
+      ? participantes.find((p) => p !== nombreChat)
+      : '';
+  const chips = $('quien-soy');
+  chips.innerHTML = '';
+  for (const p of participantes) {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.setAttribute('role', 'radio');
+    chip.textContent = p;
+    chip.addEventListener('click', () => {
+      estado.yo = p;
+      recordarYo(p);
+      actualizar();
+    });
+    chips.append(chip);
+  }
 
   const primera = new Date(mensajes[0].ts);
   const ultima = new Date(mensajes[mensajes.length - 1].ts);
@@ -128,193 +146,257 @@ function prepararOpciones(nombreChat) {
   }
   $('desde').value = fechaISO(primera);
   $('hasta').value = fechaISO(ultima);
-  const fmt = (f) => f.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
-  $('rango-chat').textContent = `El chat exportado va del ${fmt(primera)} al ${fmt(ultima)}.`;
+  $('fechas').open = false;
 
-  const lista = $('lista-tipos');
-  lista.innerHTML = '';
-  for (const [tipo, info] of Object.entries(TIPOS)) {
-    const label = document.createElement('label');
-    label.className = 'opcion';
-    label.innerHTML = `<input type="checkbox" data-tipo="${tipo}" checked> <span>${info.etiqueta} <small data-cuenta="${tipo}"></small></span>`;
-    lista.append(label);
+  // Una baldosa por cada cosa que trae el chat. Todo elegido salvo los archivos sin mensaje.
+  const total = resumenAdjuntos({ archivos: archivosDisponibles(), mensajes, yo: estado.yo });
+  const disponibles = ['conversacion', ...Object.keys(TIPOS).filter((t) => total.porTipo[t].enviados + total.porTipo[t].recibidos)];
+  if (total.sinMensaje) disponibles.push('otros');
+  estado.elegidos = new Set(disponibles.filter((d) => d !== 'otros'));
+  estado.quien = 'todos';
+
+  const baldosas = $('baldosas');
+  baldosas.innerHTML = '';
+  for (const clave of disponibles) {
+    const b = document.createElement('button');
+    b.className = 'baldosa';
+    b.dataset.baldosa = clave;
+    b.innerHTML =
+      `<svg aria-hidden="true"><use href="#i-${ICONOS[clave]}"/></svg>` +
+      `<span class="marca" aria-hidden="true"><svg><use href="#i-check"/></svg></span>` +
+      `<span class="cantidad">0</span>` +
+      `<span class="detalle"><span class="nombre">${NOMBRES[clave]}</span><span class="peso"></span></span>`;
+    b.addEventListener('click', () => {
+      if (estado.elegidos.has(clave)) estado.elegidos.delete(clave);
+      else estado.elegidos.add(clave);
+      actualizar();
+    });
+    baldosas.append(b);
   }
 
-  $('paso-opciones').hidden = false;
-  $('paso-guardar').hidden = false;
-  $('final').hidden = true;
-  actualizarResumen();
-  $('paso-opciones').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function leerOpciones() {
-  const desde = $('desde').value ? new Date(`${$('desde').value}T00:00:00`) : null;
-  const hasta = $('hasta').value ? new Date(`${$('hasta').value}T23:59:59.999`) : null;
-  const tipos = new Set(
-    [...document.querySelectorAll('[data-tipo]')].filter((c) => c.checked).map((c) => c.dataset.tipo),
-  );
-  return {
-    nombreChat: $('nombre-chat').value.trim(),
-    yo: $('quien-soy').value,
-    desde,
-    hasta,
-    tipos,
-    enviados: $('incluir-enviados').checked,
-    recibidos: $('incluir-recibidos').checked,
-    conversacion: $('guardar-conversacion').checked,
-    incluirSinMensaje: $('incluir-sin-mensaje').checked,
-  };
+  $('error-guardar').hidden = true;
+  actualizar();
 }
 
 function archivosDisponibles() {
   return [...estado.fuentes.entries()].map(([nombre, f]) => ({ nombre, tamanio: f.tamanio }));
 }
 
-function mensajesEnRango(opciones) {
-  return estado.chat.mensajes.filter(
-    (m) => (!opciones.desde || m.ts >= opciones.desde.getTime()) && (!opciones.hasta || m.ts <= opciones.hasta.getTime()),
-  );
+function rangoElegido() {
+  const desde = $('desde').value ? new Date(`${$('desde').value}T00:00:00`) : null;
+  const hasta = $('hasta').value ? new Date(`${$('hasta').value}T23:59:59.999`) : null;
+  return { desde, hasta };
 }
 
-function actualizarResumen() {
+function textoFecha(iso) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function actualizar() {
   if (!estado.chat) return;
-  const opciones = leerOpciones();
-  const enRango = mensajesEnRango(opciones);
+  const { desde, hasta } = rangoElegido();
+  const enRango = estado.chat.mensajes.filter(
+    (m) => (!desde || m.ts >= desde.getTime()) && (!hasta || m.ts <= hasta.getTime()),
+  );
   const archivos = archivosDisponibles();
+  const enviados = estado.quien !== 'recibidos';
+  const recibidos = estado.quien !== 'enviados';
 
-  $('vista-carpeta').textContent = `${CARPETA_RAIZ} / Chat con ${opciones.nombreChat || '…'}`;
-  $('cuenta-mensajes').textContent = `(${enRango.length.toLocaleString('es')} mensajes)`;
+  for (const chip of $('quien-soy').children) chip.setAttribute('aria-checked', String(chip.textContent === estado.yo));
+  for (const s of document.querySelectorAll('[data-quien]')) s.setAttribute('aria-checked', String(s.dataset.quien === estado.quien));
 
-  const resumen = resumenAdjuntos({ archivos, mensajes: enRango, yo: opciones.yo });
-  for (const [tipo, r] of Object.entries(resumen.porTipo)) {
-    const total = r.enviados + r.recibidos;
-    $('lista-tipos').querySelector(`[data-cuenta="${tipo}"]`).textContent = total
-      ? `(${r.enviados} enviados, ${r.recibidos} recibidos · ${formatoBytes(r.bytes)})`
-      : '(ninguno)';
+  const todoElChat = $('desde').value === $('desde').min && $('hasta').value === $('hasta').max;
+  $('resumen-fechas').textContent = todoElChat ? 'Todo el chat' : `${textoFecha($('desde').value)} – ${textoFecha($('hasta').value)}`;
+
+  // Cantidades de cada baldosa según quién sos, de quién y las fechas.
+  const resumen = resumenAdjuntos({ archivos, mensajes: enRango, yo: estado.yo });
+  for (const b of $('baldosas').children) {
+    const clave = b.dataset.baldosa;
+    b.setAttribute('aria-pressed', String(estado.elegidos.has(clave)));
+    let cantidad = 0;
+    let bytes = 0;
+    if (clave === 'conversacion') {
+      cantidad = enRango.length;
+    } else if (clave === 'otros') {
+      cantidad = resumen.sinMensaje;
+    } else {
+      const r = resumen.porTipo[clave];
+      cantidad = (enviados ? r.enviados : 0) + (recibidos ? r.recibidos : 0);
+      bytes = cantidad ? r.bytes * (cantidad / (r.enviados + r.recibidos || 1)) : 0;
+    }
+    b.querySelector('.cantidad').textContent = numero(cantidad);
+    b.querySelector('.peso').textContent = bytes ? formatoBytes(bytes) : '';
   }
-  $('opcion-sin-mensaje').hidden = !resumen.sinMensaje;
-  $('cuenta-sin-mensaje').textContent = `(${resumen.sinMensaje}) — van a "Otros archivos"`;
 
   const aviso = $('aviso-omitidos');
-  aviso.hidden = !resumen.omitidos;
-  aviso.textContent = archivos.length
-    ? `${resumen.omitidos === 1 ? '1 archivo del chat no vino' : `${resumen.omitidos} archivos del chat no vinieron`} en la exportación (WhatsApp a veces no los incluye si ya no están en el teléfono).`
-    : 'Este chat se exportó sin archivos: solo se puede guardar el texto. Para guardar audios y fotos, exportalo de nuevo eligiendo "Incluir archivos".';
+  aviso.hidden = archivos.length > 0 && !resumen.omitidos;
+  aviso.textContent = !archivos.length
+    ? 'Se exportó sin archivos: solo se guarda el texto.'
+    : resumen.omitidos === 1
+      ? '1 archivo no vino en la exportación.'
+      : `${numero(resumen.omitidos)} archivos no vinieron en la exportación.`;
 
-  const plan = armarPlan({
-    archivos, mensajes: enRango, participantes: estado.chat.participantes, opciones,
+  const tipos = new Set([...estado.elegidos].filter((e) => TIPOS[e]));
+  estado.plan = armarPlan({
+    archivos,
+    mensajes: enRango,
+    participantes: estado.chat.participantes,
+    opciones: { yo: estado.yo, tipos, enviados, recibidos, desde, hasta, incluirSinMensaje: estado.elegidos.has('otros') },
   });
-  const bytes = plan.reduce((s, i) => s + (i.tamanio || 0), 0);
-  estado.plan = plan;
-  estado.mensajesElegidos = opciones.conversacion ? enRango : null;
+  estado.mensajesElegidos = estado.elegidos.has('conversacion') ? enRango : null;
 
-  const faltaYo = !opciones.yo;
-  const faltaNombre = !opciones.nombreChat;
-  const nada = !plan.length && !opciones.conversacion;
-  $('resumen').textContent = faltaYo
-    ? 'Elegí cuál de los participantes sos vos para continuar.'
-    : faltaNombre
-      ? 'Escribí un nombre para el chat.'
-      : nada
-        ? 'No hay nada elegido para guardar.'
-        : `Se van a guardar ${plan.length} archivos (${formatoBytes(bytes)})` +
-          (opciones.conversacion ? ' y la conversación escrita.' : '.') +
-          ' Lo que ya esté en tu Drive no se vuelve a subir.';
-  $('boton-guardar').disabled = faltaYo || faltaNombre || nada;
+  const boton = $('boton-guardar');
+  const bytes = estado.plan.reduce((s, i) => s + (i.tamanio || 0), 0);
+  const nombre = $('nombre-chat').value.trim();
+  if (!estado.yo) boton.textContent = 'Elegí quién sos vos';
+  else if (!nombre) boton.textContent = 'Poné un nombre al chat';
+  else if (!estado.plan.length && !estado.mensajesElegidos) boton.textContent = 'Elegí qué guardar';
+  else if (!estado.plan.length) boton.textContent = 'Guardar la conversación';
+  else boton.textContent = `Guardar ${numero(estado.plan.length)} archivos · ${formatoBytes(bytes)}`;
+  boton.disabled = !estado.yo || !nombre || (!estado.plan.length && !estado.mensajesElegidos);
 }
 
-// ---------- Paso 3: guardar ----------
+for (const s of document.querySelectorAll('[data-quien]')) {
+  s.addEventListener('click', () => {
+    estado.quien = s.dataset.quien;
+    actualizar();
+  });
+}
+for (const id of ['desde', 'hasta', 'nombre-chat']) $(id).addEventListener('input', actualizar);
 
-let googleListo = null;
+// ---------- Guardar ----------
 
 async function guardar() {
-  if (!GOOGLE_CLIENT_ID) {
-    mostrarFinal('<p class="error">Falta configurar el ID de cliente de Google en <code>js/config.js</code> (ver README).</p>');
-    return;
-  }
-  const boton = $('boton-guardar');
-  boton.disabled = true;
+  const nombreChat = $('nombre-chat').value.trim();
+  $('error-guardar').hidden = true;
   try {
-    await googleListo;
-    if (!drive.conectado()) await drive.conectar();
+    await asegurarGoogle();
   } catch (e) {
-    mostrarFinal(`<p class="error">No se pudo conectar con Google: ${escapar(e.message)}</p>`);
-    boton.disabled = false;
+    $('error-guardar').textContent = `No se pudo conectar con Google. ${e.message}`;
+    $('error-guardar').hidden = false;
     return;
   }
 
-  const opciones = leerOpciones();
-  $('progreso').hidden = false;
-  $('final').hidden = true;
-  const barra = $('barra');
-  barra.removeAttribute('value');
+  mostrar('guardando', { historial: 'reemplazar' });
+  $('guardando-titulo').textContent = `Guardando el chat con ${nombreChat}`;
+  $('hechos').textContent = '0';
+  $('total').textContent = numero(estado.plan.length);
+  $('progreso').style.width = '0';
+  $('progreso').parentElement.classList.add('indeterminada');
 
   try {
     const r = await guardarEnDrive({
-      nombreChat: opciones.nombreChat,
+      nombreChat,
       items: estado.plan,
       fuentes: estado.fuentes,
       mensajes: estado.mensajesElegidos,
-      yo: opciones.yo,
+      yo: estado.yo,
       avisar: ({ etapa, hechos, total }) => {
-        $('etapa').textContent = total ? `${etapa} ${hechos} de ${total}` : etapa;
+        $('etapa').textContent = etapa;
         if (total) {
-          barra.max = total;
-          barra.value = hechos;
+          $('progreso').parentElement.classList.remove('indeterminada');
+          $('hechos').textContent = numero(hechos);
+          $('progreso').style.width = `${(hechos / total) * 100}%`;
         }
       },
     });
-    $('progreso').hidden = true;
-    const errores = r.errores.length
-      ? `<details class="error"><summary>${r.errores.length} archivos no se pudieron guardar</summary><ul>${r.errores
-          .map((e) => `<li>${escapar(e)}</li>`)
-          .join('')}</ul></details>`
-      : '';
-    mostrarFinal(`
-      <p class="exito">¡Listo! Quedó guardado en tu Drive.</p>
-      <ul>
-        <li>${r.subidos} archivos nuevos guardados</li>
-        <li>${r.repetidos} ya estaban guardados (no se duplicaron)</li>
-        ${estado.mensajesElegidos ? `<li>${r.mensajesNuevos.toLocaleString('es')} mensajes nuevos en la conversación</li>` : ''}
-      </ul>
-      ${errores}
-      <a class="boton" href="${r.carpeta}" target="_blank" rel="noopener">Abrir la carpeta en Drive</a>`);
+    mostrarListo(nombreChat, r);
   } catch (e) {
-    $('progreso').hidden = true;
-    mostrarFinal(`<p class="error">Se interrumpió el guardado: ${escapar(e.message)}. Podés volver a intentarlo: lo que ya se subió no se duplica.</p>`);
+    mostrar('opciones', { historial: 'reemplazar' });
+    $('error-guardar').textContent = `Se cortó: ${e.message}. Probá de nuevo; lo que ya se subió no se repite.`;
+    $('error-guardar').hidden = false;
   }
-  boton.disabled = false;
 }
 
-function mostrarFinal(html) {
-  const final = $('final');
-  final.innerHTML = html;
-  final.hidden = false;
+function mostrarListo(nombreChat, r) {
+  const cifras = [
+    [r.subidos, r.subidos === 1 ? 'archivo nuevo' : 'archivos nuevos'],
+    [r.repetidos, 'ya estaban guardados'],
+  ];
+  if (estado.mensajesElegidos) cifras.push([r.mensajesNuevos, r.mensajesNuevos === 1 ? 'mensaje nuevo' : 'mensajes nuevos']);
+  $('listo-titulo').textContent = 'Guardado';
+  $('cifras').innerHTML = cifras
+    .filter(([n], i) => n || i === 0)
+    .map(([n, texto]) => `<li><b>${numero(n)}</b> ${texto}</li>`)
+    .join('');
+  $('listo-errores').innerHTML = r.errores.length
+    ? `<details><summary>${r.errores.length} archivos no se pudieron guardar</summary><ul>${r.errores
+        .map((e) => `<li>${escapar(e)}</li>`)
+        .join('')}</ul></details>`
+    : '';
+  $('abrir-drive').href = r.carpeta;
+  estado.conversacionGuardada = r.conversacion ? { id: r.conversacion, nombre: nombreChat } : null;
+  $('ver-guardado').hidden = !estado.conversacionGuardada;
+  mostrar('listo', { historial: 'reemplazar' });
 }
 
-const escapar = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// ---------- Mis chats y visor ----------
+
+async function cargarGuardados() {
+  const lista = $('lista-chats');
+  const aviso = $('guardados-estado');
+  lista.innerHTML = '';
+  aviso.textContent = 'Buscando tus chats…';
+  try {
+    const chats = await listarChats();
+    aviso.textContent = chats.length ? '' : 'Todavía no guardaste ningún chat.';
+    for (const chat of chats) {
+      const li = document.createElement('li');
+      li.innerHTML =
+        `<button><span class="inicial">${escapar(chat.nombre.trim()[0]?.toUpperCase() || '·')}</span>` +
+        `<span><span class="nombre">${escapar(chat.nombre)}</span>` +
+        `<span class="fecha">Guardado el ${chat.fecha.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</span></span></button>`;
+      li.querySelector('button').addEventListener('click', () => verChat(chat));
+      lista.append(li);
+    }
+  } catch (e) {
+    aviso.textContent = `No pude traer tus chats: ${e.message}`;
+  }
+}
+
+async function verChat({ id, nombre }) {
+  $('visor-titulo').textContent = nombre;
+  mostrar('visor');
+  try {
+    await abrirChat(id, $('visor-marco'));
+  } catch (e) {
+    $('visor-marco').srcdoc = `<p style="font-family:sans-serif;padding:20px">No pude abrir el chat: ${escapar(e.message)}</p>`;
+  }
+}
+
+$('ir-guardados').addEventListener('click', async () => {
+  errorInicio(null);
+  try {
+    await asegurarGoogle();
+  } catch (e) {
+    errorInicio(new Error(`No se pudo conectar con Google. ${e.message}`));
+    return;
+  }
+  mostrar('guardados');
+  cargarGuardados();
+});
+
+$('ver-guardado').addEventListener('click', async () => {
+  history.replaceState({ pantalla: 'guardados' }, '');
+  await verChat(estado.conversacionGuardada);
+});
 
 // ---------- Inicio ----------
 
 $('version').textContent = `v${VERSION}`;
-
 $('entrada-archivo').addEventListener('change', (e) => cargarArchivos([...e.target.files]));
-
-const zona = $('zona-archivo');
-zona.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  zona.classList.add('encima');
-});
-zona.addEventListener('dragleave', () => zona.classList.remove('encima'));
-zona.addEventListener('drop', (e) => {
-  e.preventDefault();
-  zona.classList.remove('encima');
-  cargarArchivos([...e.dataTransfer.files]);
-});
-
-$('paso-opciones').addEventListener('input', actualizarResumen);
-$('paso-opciones').addEventListener('change', actualizarResumen);
 $('boton-guardar').addEventListener('click', guardar);
+$('abrir-ayuda').addEventListener('click', () => $('ayuda').showModal());
+$('ayuda').addEventListener('click', (e) => {
+  if (e.target === $('ayuda')) $('ayuda').close();
+});
+
+// En la compu se puede soltar el zip en cualquier parte de la pantalla de inicio.
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (pantallaActual === 'inicio') cargarArchivos([...e.dataTransfer.files]);
+});
 
 if (GOOGLE_CLIENT_ID) {
   googleListo = drive.iniciarGoogle(GOOGLE_CLIENT_ID);
@@ -325,13 +407,15 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
 
+history.replaceState({ pantalla: 'inicio' }, '');
+
 // Archivos que llegaron desde "Compartir" de Android.
 if (new URLSearchParams(location.search).has('compartido')) {
-  history.replaceState(null, '', location.pathname);
+  history.replaceState({ pantalla: 'inicio' }, '', location.pathname);
   tomarCompartidos()
     .then((archivos) => {
       if (archivos.length) cargarArchivos(archivos);
-      else mostrarCarga('No llegaron archivos desde WhatsApp. Probá elegirlos a mano.', true);
+      else errorInicio(new Error('No llegó ningún archivo desde WhatsApp. Probá elegirlo a mano.'));
     })
-    .catch(() => mostrarCarga('No pude leer lo que se compartió. Probá elegir el archivo a mano.', true));
+    .catch(() => errorInicio(new Error('No pude leer lo que se compartió. Probá elegirlo a mano.')));
 }

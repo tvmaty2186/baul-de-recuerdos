@@ -143,10 +143,10 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces, miniaturas = n
 <title>${escapar(titulo)}</title>
 <style>
   :root { --fondo: #efeae2; --mio: #d9fdd3; --otro: #ffffff; --texto: #111b21; --suave: #667781; --enlace: #027eb5;
-          --barra: rgba(17,27,33,.28); --punto: #00a5f4; --capa: rgba(0,0,0,.06); }
+          --barra: rgba(17,27,33,.28); --punto: #00a5f4; --capa: rgba(0,0,0,.06); --enlace-texto: #fff; }
   @media (prefers-color-scheme: dark) {
     :root { --fondo: #0b141a; --mio: #005c4b; --otro: #202c33; --texto: #e9edef; --suave: #8696a0; --enlace: #53bdeb;
-            --barra: rgba(233,237,239,.35); --punto: #53bdeb; --capa: rgba(0,0,0,.2); }
+            --barra: rgba(233,237,239,.35); --punto: #53bdeb; --capa: rgba(0,0,0,.2); --enlace-texto: #0b141a; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -174,7 +174,7 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces, miniaturas = n
   .documento { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 270px; max-width: 100%; margin: 2px 0 4px; padding: 10px; border-radius: 8px; background: var(--capa); color: inherit; text-decoration: none; }
   .doc-icono { flex: none; display: grid; place-items: center; width: 34px; height: 40px; border-radius: 4px; background: #e5534b; color: #fff; font-size: 10px; font-weight: 700; }
   .doc-nombre { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
-  .doc-boton { flex-basis: 100%; text-align: center; padding: 6px; border-radius: 16px; background: var(--enlace); color: #fff; font-size: 13px; font-weight: 600; }
+  .doc-boton { flex-basis: 100%; text-align: center; padding: 6px; border-radius: 16px; background: var(--enlace); color: var(--enlace-texto); font-size: 13px; font-weight: 600; }
   .sin-enlace { opacity: .55; }
   .sin-enlace .doc-boton { background: var(--suave); }
   .hora { text-align: right; font-size: 11px; color: var(--suave); }
