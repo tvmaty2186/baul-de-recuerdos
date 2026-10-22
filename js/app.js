@@ -27,6 +27,18 @@ function mostrarCarga(texto, error = false) {
 
 // ---------- Paso 1: leer lo exportado ----------
 
+// Android a veces entrega los archivos sin extensión (por ejemplo desde "Descargas"),
+// así que el zip se reconoce por su contenido: empieza con "PK".
+async function esZip(archivo) {
+  if (/\.zip$/i.test(archivo.name) || /zip/i.test(archivo.type)) return true;
+  const inicio = new Uint8Array(await archivo.slice(0, 4).arrayBuffer());
+  return inicio[0] === 0x50 && inicio[1] === 0x4b && inicio[2] === 0x03 && inicio[3] === 0x04;
+}
+
+// Un archivo suelto puede ser el chat aunque no termine en .txt.
+const puedeSerChat = (nombre, tipo = '', tamanio = 0) =>
+  /\.txt$/i.test(nombre) || (!/\.[a-z0-9]{2,5}$/i.test(nombre) && (!tipo || /^text\//.test(tipo)) && tamanio < 50e6);
+
 async function cargarArchivos(lista) {
   if (!lista.length) return;
   mostrarCarga('Leyendo el chat…');
@@ -36,21 +48,21 @@ async function cargarArchivos(lista) {
 
   try {
     for (const archivo of lista) {
-      if (/\.zip$/i.test(archivo.name) || archivo.type === 'application/zip') {
+      if (await esZip(archivo)) {
         nombreZip ??= archivo.name;
         const zip = await JSZip.loadAsync(archivo);
         zip.forEach((ruta, entrada) => {
           if (entrada.dir || nombreBase(ruta).startsWith('.') || ruta.startsWith('__MACOSX')) return;
           const nombre = nombreBase(ruta);
-          estado.fuentes.set(nombre, {
-            tamanio: entrada._data?.uncompressedSize ?? 0,
-            leer: () => entrada.async('arraybuffer'),
-          });
-          if (/\.txt$/i.test(nombre)) textos.push({ nombre, leer: () => entrada.async('string') });
+          const tamanio = entrada._data?.uncompressedSize ?? 0;
+          estado.fuentes.set(nombre, { tamanio, leer: () => entrada.async('arraybuffer') });
+          if (puedeSerChat(nombre, '', tamanio)) textos.push({ nombre, leer: () => entrada.async('string') });
         });
       } else {
         estado.fuentes.set(archivo.name, { tamanio: archivo.size, leer: () => archivo.arrayBuffer() });
-        if (/\.txt$/i.test(archivo.name)) textos.push({ nombre: archivo.name, leer: () => archivo.text() });
+        if (puedeSerChat(archivo.name, archivo.type, archivo.size)) {
+          textos.push({ nombre: archivo.name, leer: () => archivo.text() });
+        }
       }
     }
   } catch (e) {
@@ -65,7 +77,12 @@ async function cargarArchivos(lista) {
     if (!mejor || chat.mensajes.length > mejor.chat.mensajes.length) mejor = { ...t, chat };
   }
   if (!mejor || !mejor.chat.mensajes.length) {
-    mostrarCarga('No encontré la conversación. Elegí el .zip que genera "Exportar chat" de WhatsApp (o el .txt).', true);
+    const recibidos = lista.map((a) => `${a.name || 'sin nombre'} (${formatoBytes(a.size)})`).join(', ');
+    mostrarCarga(
+      'No encontré la conversación. Elegí el .zip que genera "Exportar chat" de WhatsApp (o el .txt). ' +
+        `Recibí: ${recibidos}.`,
+      true,
+    );
     return;
   }
   estado.fuentes.delete(mejor.nombre);
