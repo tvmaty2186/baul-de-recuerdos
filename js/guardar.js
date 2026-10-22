@@ -3,6 +3,9 @@
 import * as drive from './drive.js';
 import { unirMensajes, conversacionTexto, conversacionHtml } from './conversacion.js';
 import { tipoDeArchivo } from './plan.js';
+import { crearMiniatura } from './miniaturas.js';
+
+const CON_MINIATURA = new Set(['foto', 'sticker', 'video']);
 
 export const CARPETA_RAIZ = 'Baúl de recuerdos';
 
@@ -47,6 +50,19 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
     if (p.baul_rol) especiales[p.baul_rol] = f.id;
   }
 
+  // Lo que ya tenía la conversación guardada: mensajes y miniaturas de exportaciones anteriores.
+  let anteriores = [];
+  const miniaturas = new Map();
+  if (mensajes && especiales.datos) {
+    try {
+      const datos = JSON.parse(await drive.leerTexto(especiales.datos));
+      anteriores = datos.mensajes || [];
+      for (const [original, url] of Object.entries(datos.miniaturas || {})) miniaturas.set(original, url);
+    } catch {
+      anteriores = [];
+    }
+  }
+
   const carpetas = new Map();
   const carpetaPara = async (nombre) => {
     if (!carpetas.has(nombre)) carpetas.set(nombre, drive.buscarOCrearCarpeta(nombre, carpetaChat));
@@ -58,6 +74,10 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
     try {
       const contenido = await fuentes.get(item.original).leer();
       const hash = await sha256(contenido);
+      if (mensajes && CON_MINIATURA.has(item.tipo) && !miniaturas.has(item.original)) {
+        const miniatura = await crearMiniatura(contenido, item.tipo, item.mime);
+        if (miniatura) miniaturas.set(item.original, miniatura);
+      }
       if (hashes.has(hash)) {
         resultado.repetidos++;
       } else {
@@ -88,21 +108,15 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
 
   if (mensajes) {
     avisar({ etapa: 'Guardando la conversación…' });
-    let anteriores = [];
-    if (especiales.datos) {
-      try {
-        anteriores = JSON.parse(await drive.leerTexto(especiales.datos)).mensajes || [];
-      } catch {
-        anteriores = [];
-      }
-    }
     const { mensajes: todos, agregados } = unirMensajes(anteriores, mensajes);
     resultado.mensajesNuevos = agregados;
 
     const archivos = [
       { rol: 'txt', nombre: 'Conversación.txt', mime: 'text/plain', texto: conversacionTexto(todos) },
-      { rol: 'html', nombre: 'Conversación.html', mime: 'text/html', texto: conversacionHtml({ titulo, mensajes: todos, yo, enlaces }) },
-      { rol: 'datos', nombre: '_datos-conversacion.json', mime: 'application/json', texto: JSON.stringify({ version: 1, chat: nombreChat, yo, mensajes: todos }) },
+      { rol: 'html', nombre: 'Conversación.html', mime: 'text/html', texto: conversacionHtml({ titulo, mensajes: todos, yo, enlaces, miniaturas }) },
+      { rol: 'datos', nombre: '_datos-conversacion.json', mime: 'application/json', texto: JSON.stringify({
+        version: 1, chat: nombreChat, yo, mensajes: todos, miniaturas: Object.fromEntries(miniaturas),
+      }) },
     ];
     for (const a of archivos) {
       const contenido = new Blob([a.texto], { type: `${a.mime};charset=utf-8` });
