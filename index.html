@@ -2,108 +2,155 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Baúl de recuerdos</title>
   <meta name="description" content="Guardá chats de WhatsApp en tu Google Drive, ordenados y sin encriptar.">
-  <meta name="theme-color" content="#5b4636">
+  <meta name="theme-color" content="#eef1ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101615" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="iconos/icono.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="iconos/icono-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Figtree:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/estilos.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <header class="cabecera">
-    <img src="iconos/icono.svg" alt="" width="40" height="40">
-    <div>
-      <h1>Baúl de recuerdos <span id="version" class="version"></span></h1>
-      <p>Guardá tus chats de WhatsApp en tu Google Drive, ordenados y para siempre.</p>
+  <!-- Íconos (se usan con <svg><use href="#i-…"></svg>) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-charla" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+    <symbol id="i-foto" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></symbol>
+    <symbol id="i-documento" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-sticker" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></symbol>
+    <symbol id="i-otros" viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></symbol>
+    <symbol id="i-atras" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-lapiz" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+  </svg>
+
+  <!-- Inicio -->
+  <section class="pantalla inicio" data-pantalla="inicio">
+    <div class="inicio-cuerpo">
+      <img class="inicio-icono" src="iconos/icono.svg" alt="" width="64" height="64">
+      <h1>Guardá sus mensajes,<br>para siempre.</h1>
+      <p class="bajada">Audios, fotos y charlas de WhatsApp, ordenados en tu Google Drive.</p>
     </div>
-  </header>
+    <div class="acciones">
+      <label class="boton principal" for="entrada-archivo">Elegir chat exportado</label>
+      <input type="file" id="entrada-archivo" class="oculto" multiple accept=".zip,.txt,application/zip,text/plain,audio/*,image/*,video/*,*/*">
+      <button class="boton secundario" id="ir-guardados">Mis chats guardados</button>
+      <button class="enlace" id="abrir-ayuda">¿Cómo exporto un chat?</button>
+      <div id="error-carga" class="error-caja" hidden>
+        <p id="error-texto"></p>
+        <details><summary>Detalles</summary><p id="error-detalle"></p></details>
+      </div>
+      <p id="cargando" class="cargando" hidden>Abriendo el chat…</p>
+    </div>
+    <footer class="pie"><span id="version"></span> · <a href="privacidad.html">Privacidad</a></footer>
+  </section>
 
-  <main>
-    <!-- Paso 1 -->
-    <section id="paso-elegir" class="tarjeta">
-      <h2><span class="numero">1</span> Elegí el chat exportado</h2>
-      <details class="ayuda">
-        <summary>¿Cómo exporto un chat de WhatsApp?</summary>
-        <ol>
-          <li>Abrí el chat en WhatsApp.</li>
-          <li><strong>Android:</strong> tocá <em>⋮ → Más → Exportar chat</em>.<br>
-              <strong>iPhone:</strong> tocá el nombre del contacto arriba → <em>Exportar chat</em>.</li>
-          <li>Elegí <strong>Incluir archivos</strong> para guardar audios y fotos.</li>
-          <li><strong>Android:</strong> si instalaste esta app, elegila en la lista para compartir.<br>
-              Si no, guardá el archivo en el teléfono (o en "Archivos" en iPhone) y elegilo acá abajo.</li>
-        </ol>
-      </details>
-      <label class="zona-archivo" id="zona-archivo">
-        <input type="file" id="entrada-archivo" multiple accept=".zip,.txt,application/zip,text/plain,audio/*,image/*,video/*,*/*">
-        <span class="zona-titulo">Tocá para elegir el archivo .zip</span>
-        <span class="zona-sub">o arrastralo acá (también podés elegir el .txt junto con sus fotos y audios)</span>
+  <!-- Qué guardar -->
+  <section class="pantalla opciones" data-pantalla="opciones" hidden>
+    <header class="barra">
+      <button class="icono-boton" data-volver="inicio" aria-label="Volver"><svg><use href="#i-atras"/></svg></button>
+      <label class="titulo-editable">
+        <span class="sr">Nombre del chat</span>
+        <input id="nombre-chat" type="text" autocomplete="off" spellcheck="false">
+        <svg aria-hidden="true"><use href="#i-lapiz"/></svg>
       </label>
-      <p id="estado-carga" class="estado" hidden></p>
-    </section>
+    </header>
 
-    <!-- Paso 2 -->
-    <section id="paso-opciones" class="tarjeta" hidden>
-      <h2><span class="numero">2</span> Elegí qué guardar</h2>
+    <div class="contenido">
+      <h2 class="rotulo">¿Quién sos vos?</h2>
+      <div id="quien-soy" class="chips" role="radiogroup" aria-label="¿Quién sos vos?"></div>
 
-      <div class="campo">
-        <label for="nombre-chat">Nombre del chat</label>
-        <input id="nombre-chat" type="text" autocomplete="off">
-        <small>Se guarda en la carpeta <strong id="vista-carpeta"></strong></small>
+      <h2 class="rotulo">Qué guardar</h2>
+      <div id="baldosas" class="baldosas"></div>
+      <p id="aviso-omitidos" class="nota" hidden></p>
+
+      <h2 class="rotulo">De quién</h2>
+      <div class="segmentos" role="radiogroup" aria-label="De quién">
+        <button role="radio" data-quien="todos" aria-checked="true">Todos</button>
+        <button role="radio" data-quien="recibidos" aria-checked="false">Recibidos</button>
+        <button role="radio" data-quien="enviados" aria-checked="false">Enviados</button>
       </div>
 
-      <div class="campo">
-        <label for="quien-soy">¿Cuál de estos sos vos?</label>
-        <select id="quien-soy"></select>
-        <small>Sirve para separar lo que enviaste de lo que recibiste.</small>
-      </div>
-
-      <fieldset class="campo">
-        <legend>Fechas</legend>
-        <div class="fila">
+      <details class="fechas" id="fechas">
+        <summary><span class="rotulo-linea">Fechas</span> <span id="resumen-fechas">Todo el chat</span></summary>
+        <div class="fila-fechas">
           <label>Desde <input id="desde" type="date"></label>
           <label>Hasta <input id="hasta" type="date"></label>
         </div>
-        <small id="rango-chat"></small>
-      </fieldset>
+      </details>
+    </div>
 
-      <fieldset class="campo">
-        <legend>Qué guardar</legend>
-        <label class="opcion"><input type="checkbox" id="guardar-conversacion" checked> <span>Conversación escrita <small id="cuenta-mensajes"></small></span></label>
-        <div id="lista-tipos"></div>
-        <label class="opcion" id="opcion-sin-mensaje" hidden><input type="checkbox" id="incluir-sin-mensaje"> <span>Archivos sin mensaje asociado <small id="cuenta-sin-mensaje"></small></span></label>
-      </fieldset>
+    <div class="pie-fijo">
+      <p id="error-guardar" class="error-caja" hidden></p>
+      <button class="boton principal" id="boton-guardar">Guardar</button>
+    </div>
+  </section>
 
-      <fieldset class="campo">
-        <legend>De quién</legend>
-        <div class="fila">
-          <label class="opcion"><input type="checkbox" id="incluir-enviados" checked> <span>Enviados por mí</span></label>
-          <label class="opcion"><input type="checkbox" id="incluir-recibidos" checked> <span>Recibidos</span></label>
-        </div>
-      </fieldset>
+  <!-- Guardando -->
+  <section class="pantalla guardando" data-pantalla="guardando" hidden>
+    <div class="centro">
+      <p class="rotulo" id="guardando-titulo">Guardando</p>
+      <p class="contador"><span id="hechos">0</span><span class="de"> / <span id="total">0</span></span></p>
+      <div class="barra-progreso"><div id="progreso"></div></div>
+      <p class="nota" id="etapa">Preparando…</p>
+    </div>
+    <p class="nota pie-nota">Dejá la app abierta hasta que termine.</p>
+  </section>
 
-      <p id="aviso-omitidos" class="aviso" hidden></p>
-      <p id="resumen" class="resumen"></p>
-    </section>
+  <!-- Listo -->
+  <section class="pantalla listo" data-pantalla="listo" hidden>
+    <div class="centro">
+      <div class="sello"><svg><use href="#i-check"/></svg></div>
+      <h1 id="listo-titulo">Guardado</h1>
+      <ul class="cifras" id="cifras"></ul>
+      <div id="listo-errores"></div>
+    </div>
+    <div class="acciones">
+      <button class="boton principal" id="ver-guardado">Ver el chat</button>
+      <a class="boton secundario" id="abrir-drive" target="_blank" rel="noopener">Abrir en Drive</a>
+      <button class="enlace" data-volver="inicio">Guardar otro chat</button>
+    </div>
+  </section>
 
-    <!-- Paso 3 -->
-    <section id="paso-guardar" class="tarjeta" hidden>
-      <h2><span class="numero">3</span> Guardar en tu Drive</h2>
-      <p class="nota">La app solo puede ver y modificar las carpetas que ella misma crea en tu Drive. No guarda nada en ningún otro lado.</p>
-      <button id="boton-guardar" class="boton">Conectar con Google y guardar</button>
-      <div id="progreso" hidden>
-        <p id="etapa" class="estado"></p>
-        <progress id="barra" max="1" value="0"></progress>
-      </div>
-      <div id="final" class="final" hidden></div>
-    </section>
-  </main>
+  <!-- Chats guardados -->
+  <section class="pantalla guardados" data-pantalla="guardados" hidden>
+    <header class="barra">
+      <button class="icono-boton" data-volver="inicio" aria-label="Volver"><svg><use href="#i-atras"/></svg></button>
+      <h1 class="barra-titulo">Mis chats</h1>
+    </header>
+    <div class="contenido">
+      <p id="guardados-estado" class="nota"></p>
+      <ul id="lista-chats" class="lista-chats"></ul>
+    </div>
+  </section>
 
-  <footer class="pie">
-    <a href="privacidad.html">Privacidad</a> · Los archivos se procesan en tu teléfono y van directo a tu Drive.
-  </footer>
+  <!-- Visor de un chat -->
+  <section class="pantalla visor" data-pantalla="visor" hidden>
+    <header class="barra">
+      <button class="icono-boton" data-volver="guardados" aria-label="Volver"><svg><use href="#i-atras"/></svg></button>
+      <h1 class="barra-titulo" id="visor-titulo"></h1>
+    </header>
+    <iframe id="visor-marco" title="Conversación guardada"></iframe>
+  </section>
+
+  <!-- Ayuda -->
+  <dialog id="ayuda" class="hoja">
+    <h2>Exportar un chat</h2>
+    <ol class="pasos">
+      <li>Abrí el chat en WhatsApp.</li>
+      <li>Tocá <b>⋮ → Más → Exportar chat</b>.<br><small>En iPhone: tocá el nombre → Exportar chat.</small></li>
+      <li>Elegí <b>Incluir archivos</b>.</li>
+      <li>Compartilo a <b>Baúl</b>, o guardalo y elegilo acá.</li>
+    </ol>
+    <form method="dialog"><button class="boton secundario">Entendido</button></form>
+  </dialog>
 </body>
 </html>

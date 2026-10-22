@@ -29,7 +29,7 @@ async function claveDeChat(nombre) {
 // items: resultado de armarPlan. fuentes: Map nombre -> { leer() }.
 // mensajes: los mensajes del rango elegido (para la conversación), o null si no se guarda.
 export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo, avisar }) {
-  const resultado = { subidos: 0, repetidos: 0, errores: [], mensajesNuevos: 0, carpeta: null };
+  const resultado = { subidos: 0, repetidos: 0, errores: [], mensajesNuevos: 0, carpeta: null, conversacion: null };
 
   avisar({ etapa: 'Preparando carpetas en Drive…' });
   const raiz = await drive.buscarOCrearCarpeta(CARPETA_RAIZ);
@@ -145,11 +145,13 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
         // Las versiones anteriores dejaban la conversación suelta en la carpeta del chat.
         const padre = existente.parents?.[0];
         if (padre && padre !== carpetaConversacion) await drive.mover(existente.id, padre, carpetaConversacion);
+        if (a.rol === 'html') resultado.conversacion = existente.id;
       } else {
-        await drive.subirArchivo({
+        const subido = await drive.subirArchivo({
           nombre: a.nombre, padre: carpetaConversacion, mime: a.mime, contenido,
           propiedades: { baul_chat: claveChat, baul_rol: a.rol },
         });
+        if (a.rol === 'html') resultado.conversacion = subido.id;
       }
     }
   }

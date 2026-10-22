@@ -141,6 +141,26 @@ export async function reemplazarContenido(id, mime, contenido) {
   return r.json();
 }
 
+// Las conversaciones (Conversación.html) que la app guardó, de todos los chats.
+export async function conversacionesGuardadas() {
+  const q = `appProperties has { key='baul_rol' and value='html' } and trashed=false`;
+  const r = await pedir(
+    `${API}/files?q=${encodeURIComponent(q)}&pageSize=1000&orderBy=modifiedTime desc` +
+      `&fields=files(id,parents,modifiedTime,appProperties)`,
+  );
+  return (await r.json()).files;
+}
+
+export async function datosDe(id, campos = 'id,name,parents') {
+  return (await pedir(`${API}/files/${id}?fields=${campos}`)).json();
+}
+
+export async function leerBlob(id) {
+  return (await pedir(`${API}/files/${id}?alt=media`)).blob();
+}
+
+export const idDeEnlace = (url) => /\/file\/d\/([^/]+)/.exec(url)?.[1] ?? null;
+
 export async function leerTexto(id) {
   return (await pedir(`${API}/files/${id}?alt=media`)).text();
 }

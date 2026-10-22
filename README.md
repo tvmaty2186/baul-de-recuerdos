@@ -36,6 +36,10 @@ Los archivos se renombran con la fecha adelante (`2025-03-15 09.10 - PTT-2025031
 
 **Privacidad:** todo se procesa en el navegador y va directo a tu Drive. No hay servidor. La app usa el permiso `drive.file`, que solo le da acceso a lo que ella misma crea.
 
+## Mis chats guardados
+
+Desde **Mis chats guardados** se ven todos los chats que guardaste y se abre la conversación dentro de la app, con los audios que se escuchan ahí mismo (se descargan de tu Drive al tocarlos). En iPhone, los audios .opus que el navegador no puede reproducir se abren en Drive.
+
 ## Configurar Google (una sola vez)
 
 1. Entrá a [console.cloud.google.com](https://console.cloud.google.com) y creá un proyecto (por ejemplo "Baul de recuerdos").
@@ -86,5 +90,7 @@ No hay paso de compilación: son archivos HTML, CSS y JavaScript comunes.
 | `js/drive.js` | Inicio de sesión con Google y llamadas a la API de Drive. |
 | `js/guardar.js` | Sube todo, saltando lo que ya estaba guardado. |
 | `js/miniaturas.js` | Genera las miniaturas de fotos y videos que se ven en `Conversación.html`. |
-| `js/app.js` | La pantalla. |
+| `js/app.js` | Las pantallas: inicio, qué guardar, guardando, listo, mis chats y visor. |
+| `js/lector.js` | Abre el .zip o el .txt exportado y encuentra la conversación. |
+| `js/visor.js` | Lista los chats guardados y los muestra, reproduciendo los audios. |
 | `sw.js`, `js/compartidos.js` | Reciben el chat desde "Compartir" en Android. |
