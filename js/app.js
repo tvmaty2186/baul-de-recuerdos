@@ -4,6 +4,7 @@ import { TIPOS, armarPlan, resumenAdjuntos } from './plan.js';
 import { guardarEnDrive, CARPETA_RAIZ } from './guardar.js';
 import * as drive from './drive.js';
 import { tomarCompartidos } from './compartidos.js';
+import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -45,12 +46,14 @@ async function cargarArchivos(lista) {
   estado.fuentes = new Map();
   const textos = [];
   let nombreZip = null;
+  const diagnostico = [];
 
   try {
     for (const archivo of lista) {
       if (await esZip(archivo)) {
         nombreZip ??= archivo.name;
         const zip = await JSZip.loadAsync(archivo);
+        diagnostico.push(`zip con ${Object.keys(zip.files).length} archivos`);
         zip.forEach((ruta, entrada) => {
           if (entrada.dir || nombreBase(ruta).startsWith('.') || ruta.startsWith('__MACOSX')) return;
           const nombre = nombreBase(ruta);
@@ -73,14 +76,21 @@ async function cargarArchivos(lista) {
   // El chat es el .txt con más mensajes (puede haber .txt adjuntos dentro del chat).
   let mejor = null;
   for (const t of textos) {
-    const chat = parsearChat(await t.leer());
-    if (!mejor || chat.mensajes.length > mejor.chat.mensajes.length) mejor = { ...t, chat };
+    try {
+      const contenido = await t.leer();
+      const chat = parsearChat(contenido);
+      diagnostico.push(`"${t.nombre}": ${chat.mensajes.length} mensajes, empieza con «${contenido.slice(0, 60)}»`);
+      if (!mejor || chat.mensajes.length > mejor.chat.mensajes.length) mejor = { ...t, chat };
+    } catch (e) {
+      diagnostico.push(`"${t.nombre}": error ${e.message}`);
+    }
   }
   if (!mejor || !mejor.chat.mensajes.length) {
-    const recibidos = lista.map((a) => `${a.name || 'sin nombre'} (${formatoBytes(a.size)})`).join(', ');
+    const recibidos = lista.map((a) => `${a.name || 'sin nombre'} (${a.type || 'sin tipo'}, ${formatoBytes(a.size)})`);
+    if (!textos.length) diagnostico.push('ningún archivo de texto');
     mostrarCarga(
       'No encontré la conversación. Elegí el .zip que genera "Exportar chat" de WhatsApp (o el .txt). ' +
-        `Recibí: ${recibidos}.`,
+        `[v${VERSION}] Recibí: ${recibidos.join(', ')}. Detalle: ${diagnostico.join('; ')}.`,
       true,
     );
     return;
@@ -286,6 +296,8 @@ const escapar = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<':
 
 // ---------- Inicio ----------
 
+$('version').textContent = `v${VERSION}`;
+
 $('entrada-archivo').addEventListener('change', (e) => cargarArchivos([...e.target.files]));
 
 const zona = $('zona-archivo');
@@ -310,7 +322,7 @@ if (GOOGLE_CLIENT_ID) {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
 
 // Archivos que llegaron desde "Compartir" de Android.
