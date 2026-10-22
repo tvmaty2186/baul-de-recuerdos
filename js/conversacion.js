@@ -39,7 +39,8 @@ const escapar = (s) =>
 const ICONO = { audio: '🎤', foto: '📷', video: '🎬', sticker: '🙂', documento: '📄' };
 
 // enlaces: Map nombre original -> { url, tipo }
-export function conversacionHtml({ titulo, mensajes, yo, enlaces }) {
+// miniaturas: Map nombre original -> data: URL de una imagen chiquita
+export function conversacionHtml({ titulo, mensajes, yo, enlaces, miniaturas = new Map() }) {
   const partes = [];
   let diaAnterior = '';
   for (const msj of mensajes) {
@@ -58,7 +59,15 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces }) {
     if (msj.adjunto) {
       const enlace = enlaces.get(msj.adjunto);
       const icono = ICONO[enlace?.tipo] || '📎';
-      adjunto = enlace
+      const miniatura = miniaturas.get(msj.adjunto);
+      const imagen = miniatura &&
+        `<img src="${escapar(miniatura)}" alt="${escapar(msj.adjunto)}" loading="lazy">` +
+        (enlace?.tipo === 'video' ? '<span class="play">▶</span>' : '');
+      adjunto = imagen
+        ? enlace
+          ? `<a class="miniatura" href="${escapar(enlace.url)}" target="_blank" rel="noopener">${imagen}</a>`
+          : `<span class="miniatura">${imagen}</span>`
+        : enlace
         ? `<a class="adjunto" href="${escapar(enlace.url)}" target="_blank" rel="noopener">${icono} ${escapar(msj.adjunto)}</a>`
         : `<span class="adjunto">📎 ${escapar(msj.adjunto)}</span>`;
     }
@@ -95,6 +104,9 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces }) {
   .autor { font-size: 12.5px; font-weight: 600; color: #06cf9c; }
   .texto { white-space: pre-wrap; }
   .adjunto { display: block; color: var(--enlace); margin: 2px 0; }
+  .miniatura { position: relative; display: block; margin: 2px 0 4px; }
+  .miniatura img { display: block; max-width: 100%; width: 260px; height: auto; border-radius: 6px; }
+  .miniatura .play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 40px; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
   .hora { text-align: right; font-size: 11px; color: var(--suave); }
 </style>
 </head>

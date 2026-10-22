@@ -15,7 +15,7 @@ La idea nació para guardar las últimas conversaciones con personas que ya no e
 Baúl de recuerdos/
 └── Chat con Mamá/
     ├── Conversación.txt
-    ├── Conversación.html        ← se ve como WhatsApp, con links a cada audio y foto
+    ├── Conversación.html        ← se ve como WhatsApp, con miniaturas de fotos y videos
     ├── _datos-conversacion.json ← la app lo usa para no duplicar mensajes
     ├── Audios enviados/
     ├── Audios recibidos/
@@ -23,8 +23,11 @@ Baúl de recuerdos/
     ├── Fotos recibidas/
     ├── Videos enviados/ , Videos recibidos/
     ├── Documentos enviados/ , Documentos recibidos/
-    └── Stickers enviados/ , Stickers recibidos/
+    ├── Stickers enviados/ , Stickers recibidos/
+    └── Otros archivos/          ← solo si elegís guardar archivos sin mensaje asociado
 ```
+
+**Archivos sin mensaje asociado:** archivos que vinieron en la exportación pero que ningún mensaje del chat nombra. Normalmente no hay ninguno; si aparecen, no se sabe quién los mandó, por eso van aparte.
 
 Los archivos se renombran con la fecha adelante (`2025-03-15 09.10 - PTT-20250315-WA0003.opus`) para que queden ordenados.
 
@@ -81,5 +84,6 @@ No hay paso de compilación: son archivos HTML, CSS y JavaScript comunes.
 | `js/conversacion.js` | Une mensajes sin duplicar y genera `Conversación.txt` y `.html`. |
 | `js/drive.js` | Inicio de sesión con Google y llamadas a la API de Drive. |
 | `js/guardar.js` | Sube todo, saltando lo que ya estaba guardado. |
+| `js/miniaturas.js` | Genera las miniaturas de fotos y videos que se ven en `Conversación.html`. |
 | `js/app.js` | La pantalla. |
 | `sw.js`, `js/compartidos.js` | Reciben el chat desde "Compartir" en Android. |

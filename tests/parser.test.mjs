@@ -145,3 +145,13 @@ test('la conversación se genera en texto y html', () => {
   assert.match(html, /href="https:\/\/drive.google.com\/file\/d\/x\/view"/);
   assert.match(html, /class="msj mio"/);
 });
+
+test('la conversación muestra miniaturas con link a Drive', () => {
+  const { mensajes } = parsearChat(ANDROID_ES);
+  const html = conversacionHtml({
+    titulo: 'Chat', mensajes, yo: 'Matías',
+    enlaces: new Map([['IMG-20250315-WA0004.jpg', { url: 'https://drive.google.com/file/d/f/view', tipo: 'foto' }]]),
+    miniaturas: new Map([['IMG-20250315-WA0004.jpg', 'data:image/jpeg;base64,AAAA']]),
+  });
+  assert.match(html, /<a class="miniatura" href="https:\/\/drive.google.com\/file\/d\/f\/view"[^>]*><img src="data:image\/jpeg;base64,AAAA"/);
+});
