@@ -14,18 +14,19 @@ La idea nació para guardar las últimas conversaciones con personas que ya no e
 ```
 Baúl de recuerdos/
 └── Chat con Mamá/
-    ├── Conversación.txt
-    ├── Conversación.html        ← se ve como WhatsApp, con miniaturas de fotos y videos
-    ├── _datos-conversacion.json ← la app lo usa para no duplicar mensajes
-    ├── Audios enviados/
-    ├── Audios recibidos/
-    ├── Fotos enviadas/
-    ├── Fotos recibidas/
-    ├── Videos enviados/ , Videos recibidos/
-    ├── Documentos enviados/ , Documentos recibidos/
-    ├── Stickers enviados/ , Stickers recibidos/
-    └── Otros archivos/          ← solo si elegís guardar archivos sin mensaje asociado
+    ├── 01 - Conversación/
+    │   ├── Conversación.html        ← se ve como WhatsApp: fotos, videos, audios y documentos
+    │   ├── Conversación.txt
+    │   └── _datos-conversacion.json ← la app lo usa para no duplicar mensajes
+    ├── 02 - Audios recibidos/    03 - Audios enviados/
+    ├── 04 - Fotos recibidas/     05 - Fotos enviadas/
+    ├── 06 - Videos recibidos/    07 - Videos enviados/
+    ├── 08 - Documentos recibidos/ 09 - Documentos enviados/
+    ├── 10 - Stickers recibidos/  11 - Stickers enviados/
+    └── 12 - Otros archivos/      ← solo si elegís guardar archivos sin mensaje asociado
 ```
+
+Las carpetas van numeradas porque Drive siempre muestra las carpetas primero y las ordena por nombre: así la conversación queda arriba de todo. Los chats guardados con versiones anteriores se reacomodan solos la próxima vez que se guardan.
 
 **Archivos sin mensaje asociado:** archivos que vinieron en la exportación pero que ningún mensaje del chat nombra. Normalmente no hay ninguno; si aparecen, no se sabe quién los mandó, por eso van aparte.
 

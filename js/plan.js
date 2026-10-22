@@ -2,15 +2,28 @@
 
 import { fechaISO, horaTexto } from './parser.js';
 
+// Las carpetas van numeradas porque Drive las ordena por nombre: así la conversación
+// queda primera y lo recibido antes que lo enviado.
+export const CARPETA_CONVERSACION = '01 - Conversación';
+
 export const TIPOS = {
-  audio: { etiqueta: 'Audios', enviados: 'Audios enviados', recibidos: 'Audios recibidos' },
-  foto: { etiqueta: 'Fotos', enviados: 'Fotos enviadas', recibidos: 'Fotos recibidas' },
-  video: { etiqueta: 'Videos', enviados: 'Videos enviados', recibidos: 'Videos recibidos' },
-  documento: { etiqueta: 'Documentos', enviados: 'Documentos enviados', recibidos: 'Documentos recibidos' },
-  sticker: { etiqueta: 'Stickers', enviados: 'Stickers enviados', recibidos: 'Stickers recibidos' },
+  audio: { etiqueta: 'Audios', recibidos: '02 - Audios recibidos', enviados: '03 - Audios enviados' },
+  foto: { etiqueta: 'Fotos', recibidos: '04 - Fotos recibidas', enviados: '05 - Fotos enviadas' },
+  video: { etiqueta: 'Videos', recibidos: '06 - Videos recibidos', enviados: '07 - Videos enviados' },
+  documento: { etiqueta: 'Documentos', recibidos: '08 - Documentos recibidos', enviados: '09 - Documentos enviados' },
+  sticker: { etiqueta: 'Stickers', recibidos: '10 - Stickers recibidos', enviados: '11 - Stickers enviados' },
 };
 
-export const CARPETA_SIN_MENSAJE = 'Otros archivos';
+export const CARPETA_SIN_MENSAJE = '12 - Otros archivos';
+
+export const todasLasCarpetas = () => [
+  CARPETA_CONVERSACION,
+  ...Object.values(TIPOS).flatMap((t) => [t.recibidos, t.enviados]),
+  CARPETA_SIN_MENSAJE,
+];
+
+// Nombre que tenía la carpeta en versiones anteriores ("Audios recibidos"), para renombrarla.
+export const nombreAnterior = (carpeta) => carpeta.replace(/^\d+ - /, '');
 
 const EXTENSIONES = {
   audio: ['opus', 'ogg', 'm4a', 'mp3', 'aac', 'amr', 'wav'],

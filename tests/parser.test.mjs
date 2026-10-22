@@ -97,9 +97,9 @@ test('el plan separa enviados y recibidos y pone la fecha en el nombre', () => {
   const plan = armarPlan({ archivos, ...chat, opciones: opciones() });
   assert.equal(plan.length, 2);
   const audio = plan.find((i) => i.tipo === 'audio');
-  assert.equal(audio.carpeta, 'Audios recibidos');
+  assert.equal(audio.carpeta, '02 - Audios recibidos');
   assert.equal(audio.nombre, '2025-03-15 09.10 - PTT-20250315-WA0003.opus');
-  assert.equal(plan.find((i) => i.tipo === 'foto').carpeta, 'Fotos enviadas');
+  assert.equal(plan.find((i) => i.tipo === 'foto').carpeta, '05 - Fotos enviadas');
 });
 
 test('el plan respeta tipos, dirección, fechas y archivos sin mensaje', () => {
@@ -110,7 +110,7 @@ test('el plan respeta tipos, dirección, fechas y archivos sin mensaje', () => {
   assert.equal(plan({ hasta: new Date(2025, 2, 14, 23, 59) }).length, 0);
   const conSueltos = plan({ incluirSinMensaje: true });
   assert.equal(conSueltos.length, 3);
-  assert.equal(conSueltos[2].carpeta, 'Otros archivos');
+  assert.equal(conSueltos[2].carpeta, '12 - Otros archivos');
 });
 
 test('resumen cuenta adjuntos y omitidos', () => {
@@ -197,4 +197,21 @@ test('mensajes guardados por la versión anterior no se duplican', () => {
   const { mensajes, agregados } = unirMensajes(viejos, nuevos);
   assert.equal(mensajes.length, 6);
   assert.equal(agregados, 3);
+});
+
+test('audios como burbuja de WhatsApp y documentos como tarjeta', () => {
+  const { mensajes } = parsearChat(ANDROID_REAL + '21/10/2026, 15:56 - Matias Russo: ‎PTT-20261021-WA0091.opus (archivo adjunto)\n');
+  const html = conversacionHtml({
+    titulo: 'Chat', mensajes, yo: 'Matias Russo',
+    enlaces: new Map([
+      ['PTT-20261021-WA0091.opus', { url: 'https://drive.google.com/file/d/a/view', tipo: 'audio' }],
+      ['SAVH (1).pdf', { url: 'https://drive.google.com/file/d/p/view', tipo: 'documento' }],
+    ]),
+    audios: new Map([['PTT-20261021-WA0091.opus', { duracion: 14, onda: '0123456789'.repeat(4) }]]),
+  });
+  assert.match(html, /<a class="audio" href="https:\/\/drive.google.com\/file\/d\/a\/view"/);
+  assert.match(html, /<span class="duracion">0:14<\/span>/);
+  assert.equal((html.match(/<i style="height:/g) || []).length, 40);
+  assert.match(html, /<a class="documento" href="https:\/\/drive.google.com\/file\/d\/p\/view"[^>]*><span class="doc-icono">PDF<\/span><span class="doc-nombre">SAVH \(1\)\.pdf<\/span><span class="doc-boton">Abrir archivo<\/span>/);
+  assert.match(html, /class="documento sin-enlace"/, 'documento no guardado');
 });

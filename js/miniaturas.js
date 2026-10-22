@@ -62,3 +62,25 @@ export async function crearMiniatura(contenido, tipo, mime) {
   }
   return null;
 }
+
+// Duración y forma de onda de un audio, para dibujarlo como en WhatsApp.
+// Devuelve { duracion (segundos), onda (40 dígitos del 0 al 9) } o null si no se puede leer.
+export async function analizarAudio(contenido) {
+  try {
+    const Contexto = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const audio = await new Contexto(1, 1, 8000).decodeAudioData(contenido.slice(0));
+    const datos = audio.getChannelData(0);
+    const BARRAS = 40;
+    const tramo = Math.max(1, Math.floor(datos.length / BARRAS));
+    const picos = [];
+    for (let i = 0; i < BARRAS; i++) {
+      let pico = 0;
+      for (let j = i * tramo; j < Math.min(datos.length, (i + 1) * tramo); j += 8) pico = Math.max(pico, Math.abs(datos[j]));
+      picos.push(pico);
+    }
+    const tope = Math.max(...picos) || 1;
+    return { duracion: Math.round(audio.duration), onda: picos.map((p) => Math.round((p / tope) * 9)).join('') };
+  } catch {
+    return null;
+  }
+}

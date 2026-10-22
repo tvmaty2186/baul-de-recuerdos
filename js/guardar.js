@@ -2,8 +2,8 @@
 
 import * as drive from './drive.js';
 import { unirMensajes, conversacionTexto, conversacionHtml } from './conversacion.js';
-import { tipoDeArchivo } from './plan.js';
-import { crearMiniatura } from './miniaturas.js';
+import { tipoDeArchivo, todasLasCarpetas, nombreAnterior, CARPETA_CONVERSACION } from './plan.js';
+import { crearMiniatura, analizarAudio } from './miniaturas.js';
 
 const CON_MINIATURA = new Set(['foto', 'sticker', 'video']);
 
@@ -38,6 +38,24 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
   resultado.carpeta = drive.enlaceCarpeta(carpetaChat);
   const claveChat = await claveDeChat(nombreChat);
 
+  // Carpetas del chat. Las de versiones anteriores ("Audios recibidos") se renombran
+  // a la forma numerada ("02 - Audios recibidos") en vez de crear otras nuevas.
+  const carpetas = new Map();
+  for (const c of await drive.carpetasDentroDe(carpetaChat)) carpetas.set(c.name, c.id);
+  for (const nombre of todasLasCarpetas()) {
+    const vieja = carpetas.get(nombreAnterior(nombre));
+    if (vieja && !carpetas.has(nombre)) {
+      await drive.renombrar(vieja, nombre);
+      carpetas.set(nombre, vieja);
+    }
+  }
+  const pendientes = new Map();
+  const carpetaPara = async (nombre) => {
+    if (carpetas.has(nombre)) return carpetas.get(nombre);
+    if (!pendientes.has(nombre)) pendientes.set(nombre, drive.buscarOCrearCarpeta(nombre, carpetaChat));
+    return pendientes.get(nombre);
+  };
+
   avisar({ etapa: 'Revisando lo que ya está guardado…' });
   const existentes = await drive.archivosDelChat(claveChat);
   const hashes = new Set();
@@ -47,27 +65,23 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
     const p = f.appProperties || {};
     if (p.sha256) hashes.add(p.sha256);
     if (p.original) enlaces.set(p.original, { url: drive.enlaceArchivo(f.id), tipo: tipoDeArchivo(p.original) });
-    if (p.baul_rol) especiales[p.baul_rol] = f.id;
+    if (p.baul_rol) especiales[p.baul_rol] = f;
   }
 
   // Lo que ya tenía la conversación guardada: mensajes y miniaturas de exportaciones anteriores.
   let anteriores = [];
   const miniaturas = new Map();
+  const audios = new Map();
   if (mensajes && especiales.datos) {
     try {
-      const datos = JSON.parse(await drive.leerTexto(especiales.datos));
+      const datos = JSON.parse(await drive.leerTexto(especiales.datos.id));
       anteriores = datos.mensajes || [];
       for (const [original, url] of Object.entries(datos.miniaturas || {})) miniaturas.set(original, url);
+      for (const [original, audio] of Object.entries(datos.audios || {})) audios.set(original, audio);
     } catch {
       anteriores = [];
     }
   }
-
-  const carpetas = new Map();
-  const carpetaPara = async (nombre) => {
-    if (!carpetas.has(nombre)) carpetas.set(nombre, drive.buscarOCrearCarpeta(nombre, carpetaChat));
-    return carpetas.get(nombre);
-  };
 
   let hechos = 0;
   const procesar = async (item) => {
@@ -77,6 +91,10 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
       if (mensajes && CON_MINIATURA.has(item.tipo) && !miniaturas.has(item.original)) {
         const miniatura = await crearMiniatura(contenido, item.tipo, item.mime);
         if (miniatura) miniaturas.set(item.original, miniatura);
+      }
+      if (mensajes && item.tipo === 'audio' && !audios.has(item.original)) {
+        const audio = await analizarAudio(contenido);
+        if (audio) audios.set(item.original, audio);
       }
       if (hashes.has(hash)) {
         resultado.repetidos++;
@@ -113,18 +131,23 @@ export async function guardarEnDrive({ nombreChat, items, fuentes, mensajes, yo,
 
     const archivos = [
       { rol: 'txt', nombre: 'Conversación.txt', mime: 'text/plain', texto: conversacionTexto(todos) },
-      { rol: 'html', nombre: 'Conversación.html', mime: 'text/html', texto: conversacionHtml({ titulo, mensajes: todos, yo, enlaces, miniaturas }) },
+      { rol: 'html', nombre: 'Conversación.html', mime: 'text/html', texto: conversacionHtml({ titulo, mensajes: todos, yo, enlaces, miniaturas, audios }) },
       { rol: 'datos', nombre: '_datos-conversacion.json', mime: 'application/json', texto: JSON.stringify({
-        version: 1, chat: nombreChat, yo, mensajes: todos, miniaturas: Object.fromEntries(miniaturas),
+        version: 1, chat: nombreChat, yo, mensajes: todos, miniaturas: Object.fromEntries(miniaturas), audios: Object.fromEntries(audios),
       }) },
     ];
+    const carpetaConversacion = await carpetaPara(CARPETA_CONVERSACION);
     for (const a of archivos) {
       const contenido = new Blob([a.texto], { type: `${a.mime};charset=utf-8` });
-      if (especiales[a.rol]) {
-        await drive.reemplazarContenido(especiales[a.rol], a.mime, contenido);
+      const existente = especiales[a.rol];
+      if (existente) {
+        await drive.reemplazarContenido(existente.id, a.mime, contenido);
+        // Las versiones anteriores dejaban la conversación suelta en la carpeta del chat.
+        const padre = existente.parents?.[0];
+        if (padre && padre !== carpetaConversacion) await drive.mover(existente.id, padre, carpetaConversacion);
       } else {
         await drive.subirArchivo({
-          nombre: a.nombre, padre: carpetaChat, mime: a.mime, contenido,
+          nombre: a.nombre, padre: carpetaConversacion, mime: a.mime, contenido,
           propiedades: { baul_chat: claveChat, baul_rol: a.rol },
         });
       }
