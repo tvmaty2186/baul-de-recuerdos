@@ -24,6 +24,12 @@ function guardar(archivos) {
 
 self.addEventListener('fetch', (evento) => {
   const url = new URL(evento.request.url);
+  // Archivos de la app: siempre preguntar al servidor si hay una versión nueva,
+  // para que el teléfono no siga usando una copia vieja guardada.
+  if (evento.request.method === 'GET' && url.origin === self.location.origin) {
+    evento.respondWith(fetch(evento.request, { cache: 'no-cache' }));
+    return;
+  }
   if (evento.request.method !== 'POST' || !url.pathname.endsWith('/compartir')) return;
   evento.respondWith(
     (async () => {
