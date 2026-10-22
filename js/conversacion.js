@@ -1,13 +1,14 @@
 // Une mensajes de distintas exportaciones y genera la conversación en .txt y .html.
 
-import { claveMensaje, fechaISO, horaTexto } from './parser.js';
+import { claveMensaje, fechaISO, horaTexto, normalizarMensaje } from './parser.js';
 
 // Junta los mensajes ya guardados con los nuevos, sin repetir, ordenados por fecha.
 export function unirMensajes(anteriores, nuevos) {
+  const previos = anteriores.map(normalizarMensaje).filter(Boolean);
   const porClave = new Map();
-  for (const msj of [...anteriores, ...nuevos]) porClave.set(claveMensaje(msj), msj);
+  for (const msj of [...previos, ...nuevos]) porClave.set(claveMensaje(msj), msj);
   const unidos = [...porClave.values()].sort((a, b) => a.ts - b.ts);
-  return { mensajes: unidos, agregados: unidos.length - anteriores.length };
+  return { mensajes: unidos, agregados: unidos.length - new Set(previos.map(claveMensaje)).size };
 }
 
 function fechaLarga(fecha) {
@@ -27,7 +28,7 @@ export function conversacionTexto(mensajes) {
       const fecha = new Date(msj.ts);
       const cabeza = `${fechaCorta(fecha)} ${horaTexto(fecha)} - `;
       const adjunto = msj.adjunto ? `[archivo: ${msj.adjunto}]${msj.texto ? '\n' : ''}` : '';
-      const cuerpo = adjunto + msj.texto;
+      const cuerpo = adjunto + msj.texto + (msj.editado ? ' (editado)' : '');
       return msj.autor ? `${cabeza}${msj.autor}: ${cuerpo}` : `${cabeza}${cuerpo}`;
     })
     .join('\n') + '\n';
@@ -35,6 +36,16 @@ export function conversacionTexto(mensajes) {
 
 const escapar = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// Texto escapado con los links convertidos en enlaces que se pueden tocar.
+function conEnlaces(texto) {
+  return texto
+    .split(/(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)'\]])/)
+    .map((parte, i) =>
+      i % 2 ? `<a href="${escapar(parte)}" target="_blank" rel="noopener">${escapar(parte)}</a>` : escapar(parte),
+    )
+    .join('');
+}
 
 const ICONO = { audio: '🎤', foto: '📷', video: '🎬', sticker: '🙂', documento: '📄' };
 
@@ -71,12 +82,12 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces, miniaturas = n
         ? `<a class="adjunto" href="${escapar(enlace.url)}" target="_blank" rel="noopener">${icono} ${escapar(msj.adjunto)}</a>`
         : `<span class="adjunto">📎 ${escapar(msj.adjunto)}</span>`;
     }
-    const texto = msj.texto ? `<div class="texto">${escapar(msj.texto)}</div>` : '';
+    const texto = msj.texto ? `<div class="texto">${conEnlaces(msj.texto)}</div>` : '';
     partes.push(
       `<div class="msj ${mio ? 'mio' : 'otro'}">` +
         (mio ? '' : `<div class="autor">${escapar(msj.autor)}</div>`) +
         adjunto + texto +
-        `<div class="hora">${horaTexto(fecha)}</div></div>`,
+        `<div class="hora">${msj.editado ? 'editado · ' : ''}${horaTexto(fecha)}</div></div>`,
     );
   }
 
@@ -103,6 +114,7 @@ export function conversacionHtml({ titulo, mensajes, yo, enlaces, miniaturas = n
   .otro { align-self: flex-start; background: var(--otro); }
   .autor { font-size: 12.5px; font-weight: 600; color: #06cf9c; }
   .texto { white-space: pre-wrap; }
+  .texto a { color: var(--enlace); }
   .adjunto { display: block; color: var(--enlace); margin: 2px 0; }
   .miniatura { position: relative; display: block; margin: 2px 0 4px; }
   .miniatura img { display: block; max-width: 100%; width: 260px; height: auto; border-radius: 6px; }

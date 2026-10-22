@@ -12,10 +12,13 @@ const ESPACIOS_RAROS = /[   ]/g;
 const ENCABEZADO =
   /^\[?(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]\.?\s?m\.?)?\]?\s*(?:[-–]\s+)?(.*)$/i;
 
-// Adjuntos: "IMG-20250314-WA0001.jpg (archivo adjunto)" (Android)
-// o "<adjunto: 00000012-PHOTO-2025-03-14-21-05-33.jpg>" (iPhone).
-const ADJUNTO_ANDROID = /^(\S+\.[a-z0-9]{2,5})\s+\([^)]+\)\s*$/i;
+// Adjuntos: "IMG-20250314-WA0001.jpg (archivo adjunto)" (Android; el nombre puede tener
+// espacios, como "SAVH (1).pdf (archivo adjunto)") o "<adjunto: 00000012-PHOTO-….jpg>" (iPhone).
+const ADJUNTO_ANDROID =
+  /^(.+\.[a-z0-9]{2,5})\s+\((archivo adjunto|file attached|arquivo anexado|fichier joint|file allegato|Datei angehängt)\)\s*$/i;
 const ADJUNTO_IPHONE = /^<[^:<>]+:\s*([^<>]+\.[a-z0-9]{2,5})>\s*$/i;
+// "<Se editó este mensaje.>" al final del texto.
+const EDITADO = /\s*<(se editó este mensaje\.?|this message was edited|mensagem editada|ce message a été modifié)>\s*$/i;
 const MULTIMEDIA_OMITIDA =
   /^<?(multimedia omitido|media omitted|arquivo de mídia oculto|mídia omitida|imagen omitida|image omitted|audio omitido|audio omitted|video omitido|video omitted|sticker omitido|sticker omitted|documento omitido|document omitted|gif omitido|gif omitted)>?$/i;
 
@@ -81,15 +84,39 @@ function detectarAdjunto(texto) {
   const primera = texto.split('\n')[0].trim();
   let m = ADJUNTO_IPHONE.exec(primera) || ADJUNTO_ANDROID.exec(primera);
   if (m) {
-    const resto = texto.split('\n').slice(1).join('\n').trim();
-    return { adjunto: m[1].trim(), texto: resto };
+    const adjunto = m[1].trim();
+    let resto = texto.split('\n').slice(1).join('\n').trim();
+    // En documentos WhatsApp repite el nombre del archivo como texto.
+    if (resto === adjunto) resto = '';
+    return { adjunto, texto: resto };
   }
   if (MULTIMEDIA_OMITIDA.test(primera)) return { omitido: true, texto: primera };
   return { texto };
 }
 
+// Deja un mensaje en su forma final. También se aplica a mensajes guardados por versiones
+// anteriores de la app, para que las claves coincidan y no se dupliquen al unirlos.
+// Devuelve null si el mensaje vino vacío: WhatsApp exporta así llamadas, encuestas y
+// el encabezado de los álbumes de fotos, sin ningún contenido que guardar.
+export function normalizarMensaje(msj) {
+  let { texto, adjunto = null, omitido = false, editado = false } = msj;
+  texto = texto.replace(/\s+$/, '');
+  if (EDITADO.test(texto)) {
+    editado = true;
+    texto = texto.replace(EDITADO, '');
+  }
+  if (!adjunto && !omitido) {
+    const extra = detectarAdjunto(texto);
+    texto = extra.texto;
+    adjunto = extra.adjunto ?? null;
+    omitido = Boolean(extra.omitido);
+  }
+  if (!texto && !adjunto && !omitido) return null;
+  return { ts: msj.ts, autor: msj.autor, texto, adjunto, omitido, editado };
+}
+
 // Devuelve { mensajes, participantes, ordenFecha }.
-// Cada mensaje: { ts (ms), autor (null si es aviso del sistema), texto, adjunto, omitido }
+// Cada mensaje: { ts (ms), autor (null si es aviso del sistema), texto, adjunto, omitido, editado }
 export function parsearChat(contenido, { ordenFecha } = {}) {
   const lineas = contenido.split('\n').map(limpiarLinea);
   const orden = ordenFecha || detectarOrdenFecha(lineas);
@@ -98,14 +125,8 @@ export function parsearChat(contenido, { ordenFecha } = {}) {
 
   const cerrar = () => {
     if (!actual) return;
-    const extra = detectarAdjunto(actual.texto);
-    mensajes.push({
-      ts: actual.ts,
-      autor: actual.autor,
-      texto: extra.texto,
-      adjunto: extra.adjunto ?? null,
-      omitido: Boolean(extra.omitido),
-    });
+    const msj = normalizarMensaje(actual);
+    if (msj) mensajes.push(msj);
     actual = null;
   };
 
@@ -121,8 +142,6 @@ export function parsearChat(contenido, { ordenFecha } = {}) {
     }
   }
   cerrar();
-
-  for (const msj of mensajes) msj.texto = msj.texto.replace(/\s+$/, '');
 
   const conteo = new Map();
   for (const msj of mensajes) {

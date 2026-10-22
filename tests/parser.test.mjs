@@ -155,3 +155,46 @@ test('la conversación muestra miniaturas con link a Drive', () => {
   });
   assert.match(html, /<a class="miniatura" href="https:\/\/drive.google.com\/file\/d\/f\/view"[^>]*><img src="data:image\/jpeg;base64,AAAA"/);
 });
+
+// Fragmento real de Android (es-AR) con años de 4 dígitos, documentos con espacios,
+// mensajes vacíos (llamadas/álbumes) y mensajes editados.
+const ANDROID_REAL = `16/10/2026, 09:59 - Matias Russo: Hola Diego
+16/10/2026, 15:27 - Diego Paulino LC Tech: 
+19/10/2026, 10:38 - Diego Paulino LC Tech: \u200eAI- Conduit Flexible APE (1).pdf (archivo adjunto)
+AI- Conduit Flexible APE (1).pdf
+19/10/2026, 11:06 - Diego Paulino LC Tech: \u200eSAVH (1).pdf (archivo adjunto)
+SAVH (1).pdf
+19/10/2026, 11:07 - Diego Paulino LC Tech: \u200eIMG-20261019-WA0007.jpg (archivo adjunto)
+El esquema de interconexión
+21/10/2026, 14:32 - Matias Russo: AR-7204H
+Reemplazo directo <Se editó este mensaje.>
+21/10/2026, 14:43 - Matias Russo: https://www.delga.com/archivos/x.pdf?a=1&b=2
+`;
+
+test('chat real: documentos con espacios, vacíos y editados', () => {
+  const { mensajes } = parsearChat(ANDROID_REAL);
+  assert.equal(mensajes.length, 6, 'el mensaje vacío se descarta');
+  assert.equal(mensajes[1].adjunto, 'AI- Conduit Flexible APE (1).pdf');
+  assert.equal(mensajes[1].texto, '', 'no repite el nombre del documento');
+  assert.equal(mensajes[2].adjunto, 'SAVH (1).pdf');
+  assert.equal(mensajes[3].texto, 'El esquema de interconexión');
+  assert.equal(mensajes[4].texto, 'AR-7204H\nReemplazo directo');
+  assert.equal(mensajes[4].editado, true);
+  const html = conversacionHtml({ titulo: 'Chat', mensajes, yo: 'Matias Russo', enlaces: new Map() });
+  assert.match(html, /<a href="https:\/\/www\.delga\.com\/archivos\/x\.pdf\?a=1&amp;b=2" target="_blank"/);
+  assert.match(html, /editado · 14:32/);
+  assert.match(conversacionTexto(mensajes), /Reemplazo directo \(editado\)/);
+});
+
+test('mensajes guardados por la versión anterior no se duplican', () => {
+  const nuevos = parsearChat(ANDROID_REAL).mensajes;
+  const viejos = [
+    { ts: nuevos[0].ts, autor: 'Matias Russo', texto: 'Hola Diego', adjunto: null, omitido: false },
+    { ts: nuevos[0].ts + 1, autor: 'Diego Paulino LC Tech', texto: '', adjunto: null, omitido: false },
+    { ...nuevos[4], editado: undefined, texto: 'AR-7204H\nReemplazo directo <Se editó este mensaje.>' },
+    { ...nuevos[2], adjunto: null, texto: 'SAVH (1).pdf (archivo adjunto)\nSAVH (1).pdf' },
+  ];
+  const { mensajes, agregados } = unirMensajes(viejos, nuevos);
+  assert.equal(mensajes.length, 6);
+  assert.equal(agregados, 3);
+});
