@@ -64,6 +64,11 @@ function reiniciar() {
 
 const PASOS = [
   {
+    parte: -1, escena: 'bienvenida',
+    texto: 'Esta es una app para guardar y proteger las conversaciones importantes y las de tus seres queridos.',
+    run: () => espera(5000),
+  },
+  {
     parte: 0, escena: 'chrome',
     texto: 'Abrí la app en Chrome.',
     run: () => espera(1800),
@@ -227,7 +232,8 @@ const PASOS = [
 let actual = 0;
 
 function pintarControles() {
-  $('#numero').textContent = `Paso ${actual + 1} de ${PASOS.length} · ${PARTES[PASOS[actual].parte]}`;
+  // El primer paso es la bienvenida: no cuenta como paso del recorrido.
+  $('#numero').textContent = actual === 0 ? 'Bienvenida' : `Paso ${actual} de ${PASOS.length - 1} · ${PARTES[PASOS[actual].parte]}`;
   $('#texto').textContent = PASOS[actual].texto;
   for (const b of document.querySelectorAll('[data-parte]')) {
     b.setAttribute('aria-current', String(Number(b.dataset.parte) === PASOS[actual].parte));
@@ -258,7 +264,7 @@ async function irA(indice) {
 
 // Achica el celular para que entre en pantallas chicas.
 function ajustarEscala() {
-  const alto = window.innerHeight - 290;
+  const alto = window.innerHeight - 330;
   const ancho = window.innerWidth - 32;
   const escala = Math.max(0.55, Math.min(1, alto / 580, ancho / 280));
   document.documentElement.style.setProperty('--escala', escala.toFixed(3));
