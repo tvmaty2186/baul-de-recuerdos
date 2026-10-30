@@ -7,6 +7,7 @@ import { listarChats, abrirChat, cerrarChat } from './visor.js';
 import * as drive from './drive.js';
 import { tomarCompartidos } from './compartidos.js';
 import { VERSION } from './version.js';
+import { compartirApp, tutorialVisto } from './compartir.js';
 
 const $ = (id) => document.getElementById(id);
 const escapar = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -403,7 +404,15 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
 
+$('compartir-app').addEventListener('click', compartirApp);
+
 history.replaceState({ pantalla: 'inicio' }, '');
+
+// La primera vez que alguien abre la app le mostramos cómo funciona
+// (salvo que llegue con un chat compartido desde WhatsApp: ese ya sabe).
+if (!tutorialVisto() && !new URLSearchParams(location.search).has('compartido')) {
+  location.replace('como-funciona.html?primera=1');
+}
 
 // Archivos que llegaron desde "Compartir" de Android.
 if (new URLSearchParams(location.search).has('compartido')) {

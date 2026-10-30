@@ -18,6 +18,7 @@
     <header class="barra">
       <a class="icono-boton" href="./" aria-label="Volver a la app"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></a>
       <h1 class="barra-titulo">Cómo funciona</h1>
+      <a class="saltar" id="saltar" href="./" hidden>Saltar</a>
     </header>
 
     <nav class="partes" aria-label="Partes">
@@ -186,7 +187,13 @@
       <button class="icono-boton" id="siguiente" aria-label="Paso siguiente"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
     </div>
 
-    <a class="boton principal ir-app" href="./">Ir a la app</a>
+    <div class="botones-final">
+      <a class="boton principal" id="ir-app" href="./">Ir a la app</a>
+      <button class="boton secundario" id="compartir-app">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
+        Compartir la app
+      </button>
+    </div>
   </main>
 </body>
 </html>

@@ -1,6 +1,8 @@
 // Animación de "Cómo funciona": un celular que recorre instalar, exportar y guardar.
 // Cada paso arma su escena desde cero, así se puede saltar a cualquiera.
 
+import { compartirApp, marcarTutorialVisto } from './compartir.js';
+
 const $ = (s) => document.querySelector(s);
 const pantalla = $('#pantalla-cel');
 const dedo = $('#dedo');
@@ -280,6 +282,15 @@ for (const b of document.querySelectorAll('[data-parte]')) {
   b.addEventListener('click', () => irA(PASOS.findIndex((p) => p.parte === Number(b.dataset.parte))));
 }
 window.addEventListener('resize', ajustarEscala);
+
+$('#compartir-app').addEventListener('click', compartirApp);
+
+// Primera visita: se ofrece saltar la animación y el botón final invita a empezar.
+marcarTutorialVisto();
+if (new URLSearchParams(location.search).has('primera')) {
+  $('#saltar').hidden = false;
+  $('#ir-app').textContent = 'Empezar';
+}
 
 ajustarEscala();
 irA(0);

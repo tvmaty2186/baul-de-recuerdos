@@ -38,7 +38,7 @@ Los archivos se renombran con la fecha adelante (`2025-03-15 09.10 - PTT-2025031
 
 ## Cómo funciona (animación)
 
-`como-funciona.html` muestra un celular que recorre todo el proceso paso a paso: instalar la app, exportar un chat de WhatsApp y compartirlo a Baúl, y guardarlo y verlo. Se abre desde "¿Cómo funciona?" en el inicio y se puede compartir con quien lo necesite.
+`como-funciona.html` muestra un celular que recorre todo el proceso paso a paso: instalar la app, exportar un chat de WhatsApp y compartirlo a Baúl, y guardarlo y verlo. Se muestra sola la primera vez que alguien abre la app (con un botón para saltarla), después se abre desde "¿Cómo funciona?" en el inicio. El botón **Compartir** del inicio y del final de la animación manda el link de la app por WhatsApp u otra app (o lo copia, si el navegador no permite compartir).
 
 ## Mis chats guardados
 
