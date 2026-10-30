@@ -305,22 +305,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .visor .barra { position: static; }
 #visor-marco { flex: 1; width: 100%; border: 0; background: var(--fondo); }
 
-/* ---------- Ayuda ---------- */
-
-.hoja {
-  width: min(520px, 100%);
-  margin: auto auto 0;
-  border: 0;
-  border-radius: 22px 22px 0 0;
-  padding: 24px 24px calc(20px + env(safe-area-inset-bottom));
-  background: var(--superficie);
-  color: var(--tinta);
-}
-.hoja::backdrop { background: rgba(10, 16, 15, 0.45); }
-.hoja h2 { font: 600 1.5rem/1.2 var(--serif); }
-.pasos { padding-left: 22px; margin: 16px 0 20px; display: flex; flex-direction: column; gap: 10px; }
-.pasos small { color: var(--tenue); }
-
 /* ---------- Privacidad ---------- */
 
 .texto-legal { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; }

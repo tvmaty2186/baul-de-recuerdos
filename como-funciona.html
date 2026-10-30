@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cómo funciona · Baúl de recuerdos</title>
+  <meta name="description" content="Paso a paso animado: instalar Baúl, exportar un chat de WhatsApp y guardarlo en Drive.">
+  <link rel="icon" href="iconos/icono.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Figtree:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="stylesheet" href="css/tutorial.css">
+  <script type="module" src="js/tutorial.js"></script>
+</head>
+<body>
+  <main class="tutorial">
+    <header class="barra">
+      <a class="icono-boton" href="./" aria-label="Volver a la app"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></a>
+      <h1 class="barra-titulo">Cómo funciona</h1>
+    </header>
+
+    <nav class="partes" aria-label="Partes">
+      <button data-parte="0">Instalar</button>
+      <button data-parte="1">Exportar</button>
+      <button data-parte="2">Guardar y ver</button>
+    </nav>
+
+    <div class="escenario" id="escenario">
+      <div class="celular" id="celular">
+        <div class="pantalla-cel" id="pantalla-cel">
+          <div class="estado-cel"><span>10:24</span><span class="senal"></span></div>
+
+          <!-- 1. Chrome con la app abierta -->
+          <div class="esc" data-escena="chrome">
+            <div class="ch-barra">
+              <span class="ch-url">tvmaty2186.github.io/baul…</span>
+              <span class="ch-puntos" id="ch-menu-btn">⋮</span>
+            </div>
+            <div class="mini-app inicio-mini">
+              <img src="iconos/icono.svg" alt="" width="40" height="40">
+              <p class="mini-titulo">Guardá sus mensajes,<br>para siempre.</p>
+              <p class="mini-bajada">Audios, fotos y charlas de WhatsApp, en tu Drive.</p>
+              <span class="mini-boton lleno">Elegir chat exportado</span>
+              <span class="mini-boton">Mis chats guardados</span>
+            </div>
+            <div class="menu ch-menu capa" id="ch-menu">
+              <span>Nueva pestaña</span><span>Historial</span><span>Descargas</span><span>Compartir…</span>
+              <span class="destacado" id="ch-instalar">Instalar app</span>
+            </div>
+            <div class="velo capa" id="ch-dialogo">
+              <div class="dialogo">
+                <b>¿Instalar la app?</b>
+                <div class="dialogo-app"><img src="iconos/icono.svg" alt="" width="34" height="34"><span>Baúl de recuerdos<small>tvmaty2186.github.io</small></span></div>
+                <div class="dialogo-botones"><span>Cancelar</span><span class="ok" id="ch-instalar-ok">Instalar</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Pantalla de inicio del teléfono -->
+          <div class="esc escritorio" data-escena="escritorio">
+            <div class="iconos-cel">
+              <i style="--c:#7aa6c2"></i><i style="--c:#c98d7a"></i><i style="--c:#8fb48a"></i><i style="--c:#b39ad0"></i>
+              <i style="--c:#d6b76a"></i><i style="--c:#6fa7a0"></i><i style="--c:#c2879f"></i>
+              <span class="icono-baul" id="icono-baul"><img src="iconos/icono.svg" alt=""><small>Baúl</small></span>
+            </div>
+          </div>
+
+          <!-- 3. WhatsApp -->
+          <div class="esc wsp" data-escena="wsp">
+            <div class="w-barra">
+              <span class="w-avatar">M</span><span class="w-nombre">Mamá</span>
+              <span class="ch-puntos" id="w-menu-btn">⋮</span>
+            </div>
+            <div class="w-chat">
+              <span class="w-msj otro">¿Cómo estás, hijo?</span>
+              <span class="w-msj mio">Bien ma, ¿y vos?</span>
+              <span class="w-msj otro w-audio"><b>▶</b><i></i>0:14</span>
+              <span class="w-msj otro">Te quiero mucho ❤️</span>
+            </div>
+            <div class="menu w-menu capa" id="w-menu">
+              <span>Ver contacto</span><span>Buscar</span><span>Silenciar</span><span>Fondo de pantalla</span>
+              <span class="destacado" id="w-mas">Más ›</span>
+            </div>
+            <div class="menu w-menu capa" id="w-sub">
+              <span>Denunciar</span><span>Bloquear</span><span>Vaciar chat</span>
+              <span class="destacado" id="w-exportar">Exportar chat</span>
+            </div>
+            <div class="velo capa" id="w-dialogo">
+              <div class="dialogo">
+                <b>¿Incluir archivos?</b>
+                <p>Se adjuntan los audios, fotos y videos del chat.</p>
+                <div class="dialogo-botones"><span>Sin archivos</span><span class="ok" id="w-incluir">Incluir archivos</span></div>
+              </div>
+            </div>
+            <div class="velo capa abajo" id="compartir">
+              <div class="hoja-cel">
+                <b>Compartir</b>
+                <span class="archivo-zip">🗂 Chat de WhatsApp con Mamá.zip</span>
+                <div class="apps">
+                  <span><i style="--c:#4c8bf5"></i>Drive</span>
+                  <span><i style="--c:#e0605a"></i>Gmail</span>
+                  <span><i style="--c:#5aa36b"></i>Mensajes</span>
+                  <span id="c-baul"><img src="iconos/icono.svg" alt="">Baúl</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. La app: qué guardar -->
+          <div class="esc app" data-escena="opciones">
+            <div class="a-barra"><span>‹</span><b>Mamá</b></div>
+            <p class="a-rotulo">¿Quién sos vos?</p>
+            <div class="a-chips"><span>Mamá</span><span id="a-yo">Matías</span></div>
+            <p class="a-rotulo">Qué guardar</p>
+            <div class="a-baldosas">
+              <span class="on"><small>💬</small><b>1.284</b>Conversación</span>
+              <span class="on"><small>🎤</small><b>85</b>Audios</span>
+              <span class="on"><small>🖼</small><b>40</b>Fotos</span>
+              <span class="on"><small>🎬</small><b>6</b>Videos</span>
+              <span class="on"><small>📄</small><b>2</b>Documentos</span>
+              <span class="on" id="a-stickers"><small>🙂</small><b>12</b>Stickers</span>
+            </div>
+            <span class="mini-boton lleno a-guardar" id="a-guardar">Guardar 145 archivos · 38 MB</span>
+          </div>
+
+          <!-- 5. Google -->
+          <div class="esc google" data-escena="google">
+            <div class="g-caja">
+              <span class="g-logo">G</span>
+              <b>Elegí una cuenta</b>
+              <small>para continuar a Baúl de recuerdos</small>
+              <span class="g-cuenta" id="g-cuenta"><i>T</i><span>Tu cuenta<small>tu.correo@gmail.com</small></span></span>
+            </div>
+            <div class="g-caja capa" id="g-permiso">
+              <span class="g-logo">G</span>
+              <b>Baúl de recuerdos quiere acceder a tu Drive</b>
+              <small>Solo a los archivos que cree esta app. No puede ver el resto de tu Drive.</small>
+              <span class="g-boton" id="g-permitir">Continuar</span>
+            </div>
+          </div>
+
+          <!-- 6. Guardando -->
+          <div class="esc app centro-cel" data-escena="guardando">
+            <p class="a-rotulo">Guardando el chat con Mamá</p>
+            <p class="a-contador"><span id="a-hechos">0</span><small> / 145</small></p>
+            <div class="a-progreso"><i id="a-barra"></i></div>
+          </div>
+
+          <!-- 7. Listo -->
+          <div class="esc app centro-cel" data-escena="listo">
+            <span class="a-sello">✓</span>
+            <p class="a-grande">Guardado</p>
+            <p class="a-cifras"><b>145</b> archivos nuevos<br><b>1.284</b> mensajes</p>
+            <span class="mini-boton lleno" id="a-ver">Ver el chat</span>
+            <span class="mini-boton">Abrir en Drive</span>
+          </div>
+
+          <!-- 8. Visor -->
+          <div class="esc wsp" data-escena="visor">
+            <div class="a-barra"><span>‹</span><b>Mamá</b></div>
+            <div class="w-chat">
+              <span class="w-msj otro">¿Llegaste bien?</span>
+              <span class="w-msj mio">Sí ma, recién</span>
+              <span class="w-msj otro v-audio" id="v-audio"><b id="v-play">▶</b><span class="v-onda" id="v-onda"></span><small id="v-tiempo">0:14</small></span>
+              <span class="w-msj otro">Te quiero mucho ❤️</span>
+            </div>
+          </div>
+
+          <!-- 9. Fin -->
+          <div class="esc app centro-cel fin" data-escena="fin">
+            <img src="iconos/icono.svg" alt="" width="56" height="56">
+            <p class="a-grande">Sus mensajes,<br>a salvo.</p>
+          </div>
+
+          <div class="dedo" id="dedo" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="leyenda" aria-live="polite"><span id="numero"></span><span id="texto"></span></p>
+
+    <div class="controles">
+      <button class="icono-boton" id="anterior" aria-label="Paso anterior"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></button>
+      <button class="icono-boton grande" id="pausa" aria-label="Pausar"><svg viewBox="0 0 24 24" id="icono-pausa"><path d="M9 6v12M15 6v12"/></svg></button>
+      <button class="icono-boton" id="siguiente" aria-label="Paso siguiente"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+    </div>
+
+    <a class="boton principal ir-app" href="./">Ir a la app</a>
+  </main>
+</body>
+</html>

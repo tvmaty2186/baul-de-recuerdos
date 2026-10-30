@@ -386,10 +386,6 @@ $('ver-guardado').addEventListener('click', async () => {
 $('version').textContent = `v${VERSION}`;
 $('entrada-archivo').addEventListener('change', (e) => cargarArchivos([...e.target.files]));
 $('boton-guardar').addEventListener('click', guardar);
-$('abrir-ayuda').addEventListener('click', () => $('ayuda').showModal());
-$('ayuda').addEventListener('click', (e) => {
-  if (e.target === $('ayuda')) $('ayuda').close();
-});
 
 // En la compu se puede soltar el zip en cualquier parte de la pantalla de inicio.
 document.addEventListener('dragover', (e) => e.preventDefault());
