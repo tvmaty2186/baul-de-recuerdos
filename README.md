@@ -36,6 +36,10 @@ Los archivos se renombran con la fecha adelante (`2025-03-15 09.10 - PTT-2025031
 
 **Privacidad:** todo se procesa en el navegador y va directo a tu Drive. No hay servidor. La app usa el permiso `drive.file`, que solo le da acceso a lo que ella misma crea.
 
+## Cómo funciona (animación)
+
+`como-funciona.html` muestra un celular que recorre todo el proceso paso a paso: instalar la app, exportar un chat de WhatsApp y compartirlo a Baúl, y guardarlo y verlo. Se abre desde "¿Cómo funciona?" en el inicio y se puede compartir con quien lo necesite.
+
 ## Mis chats guardados
 
 Desde **Mis chats guardados** se ven todos los chats que guardaste y se abre la conversación dentro de la app, con los audios que se escuchan ahí mismo (se descargan de tu Drive al tocarlos). En iPhone, los audios .opus que el navegador no puede reproducir se abren en Drive.
@@ -92,5 +96,6 @@ No hay paso de compilación: son archivos HTML, CSS y JavaScript comunes.
 | `js/miniaturas.js` | Genera las miniaturas de fotos y videos que se ven en `Conversación.html`. |
 | `js/app.js` | Las pantallas: inicio, qué guardar, guardando, listo, mis chats y visor. |
 | `js/lector.js` | Abre el .zip o el .txt exportado y encuentra la conversación. |
+| `js/tutorial.js`, `css/tutorial.css` | La animación de "Cómo funciona". |
 | `js/visor.js` | Lista los chats guardados y los muestra, reproduciendo los audios. |
 | `sw.js`, `js/compartidos.js` | Reciben el chat desde "Compartir" en Android. |

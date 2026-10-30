@@ -43,7 +43,7 @@
       <label class="boton principal" for="entrada-archivo">Elegir chat exportado</label>
       <input type="file" id="entrada-archivo" class="oculto" multiple accept=".zip,.txt,application/zip,text/plain,audio/*,image/*,video/*,*/*">
       <button class="boton secundario" id="ir-guardados">Mis chats guardados</button>
-      <button class="enlace" id="abrir-ayuda">¿Cómo exporto un chat?</button>
+      <a class="enlace" href="como-funciona.html">¿Cómo funciona?</a>
       <div id="error-carga" class="error-caja" hidden>
         <p id="error-texto"></p>
         <details><summary>Detalles</summary><p id="error-detalle"></p></details>
@@ -141,16 +141,5 @@
     <iframe id="visor-marco" title="Conversación guardada"></iframe>
   </section>
 
-  <!-- Ayuda -->
-  <dialog id="ayuda" class="hoja">
-    <h2>Exportar un chat</h2>
-    <ol class="pasos">
-      <li>Abrí el chat en WhatsApp.</li>
-      <li>Tocá <b>⋮ → Más → Exportar chat</b>.<br><small>En iPhone: tocá el nombre → Exportar chat.</small></li>
-      <li>Elegí <b>Incluir archivos</b>.</li>
-      <li>Compartilo a <b>Baúl</b>, o guardalo y elegilo acá.</li>
-    </ol>
-    <form method="dialog"><button class="boton secundario">Entendido</button></form>
-  </dialog>
 </body>
 </html>
